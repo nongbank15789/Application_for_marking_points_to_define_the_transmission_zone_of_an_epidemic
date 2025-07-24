@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:project/screens/drawer_list_item.dart';
+import 'drawer_list_item.dart';
 import 'profile_screen.dart';
 
 class MapScreen extends StatefulWidget {
@@ -273,12 +273,15 @@ class _MapScreenState extends State<MapScreen> {
               icon: Icons.person,
               title: 'โปรไฟล์',
               onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const ProfileScreen(),
-                  ),
-                );
+                Navigator.pop(context); // ปิด Drawer ก่อน
+                Future.delayed(const Duration(milliseconds: 300), () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ProfileScreen(),
+                    ),
+                  );
+                });
               },
             ),
             DrawerListItem(
