@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:project/screens/drawer_list_item.dart';
+import 'profile_screen.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -14,87 +16,142 @@ class _MapScreenState extends State<MapScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final Completer<GoogleMapController> _controller = Completer();
 
-  LatLng? _center;
+  LatLng? _center; // ตำแหน่งกลางแผนที่ อาจจะเป็น null ในตอนแรก
   final double _circleRadius = 300;
-  bool _isLoading = true;
+  bool _isLoading = true; // สถานะโหลดข้อมูลเริ่มต้น
 
   @override
   void initState() {
     super.initState();
-    _getInitialLocation();
+    _getInitialLocation(); // เริ่มต้นดึงตำแหน่งเมื่อ Widget ถูกสร้าง
   }
 
+  // ฟังก์ชันสำหรับดึงตำแหน่งเริ่มต้นและจัดการสถานะโหลด
   Future<void> _getInitialLocation() async {
     try {
-      await _determinePosition();
+      await _determinePosition(); // พยายามดึงตำแหน่ง
     } finally {
-      setState(() => _isLoading = false);
+      // ใช้ mounted เพื่อป้องกัน setState หลังจาก Widget ถูกทำลาย
+      if (mounted) {
+        setState(
+          () => _isLoading = false,
+        ); // เมื่อเสร็จสิ้น (ไม่ว่าจะสำเร็จหรือล้มเหลว) ให้หยุดโหลด
+      }
     }
   }
 
+  // ฟังก์ชันสำหรับตรวจสอบและขอสิทธิ์ตำแหน่ง รวมถึงดึงตำแหน่งปัจจุบัน
   Future<void> _determinePosition() async {
     bool serviceEnabled;
     LocationPermission permission;
 
+    // 1. ตรวจสอบว่าบริการระบุตำแหน่งเปิดใช้งานอยู่หรือไม่
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      _showSnackBar('Location services are disabled.');
-      return;
+      _showSnackBar('Location services are disabled. Please enable them.');
+      // หากบริการปิดอยู่ และ _center ยังเป็น null ให้ตั้งค่าเริ่มต้น
+      if (mounted && _center == null) {
+        setState(() {
+          _center = const LatLng(18.7883, 98.9853); // Default to Chiang Mai
+        });
+      }
+      return; // ออกจากฟังก์ชัน
     }
 
+    // 2. ตรวจสอบสถานะสิทธิ์การเข้าถึงตำแหน่ง
     permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
+      // หากสิทธิ์ถูกปฏิเสธ ให้ขอสิทธิ์
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
-        _showSnackBar('Location permissions are denied.');
-        return;
+        // หากผู้ใช้ปฏิเสธอีกครั้ง
+        _showSnackBar(
+          'Location permissions are denied. Cannot show your location.',
+        );
+        if (mounted && _center == null) {
+          setState(() {
+            _center = const LatLng(18.7883, 98.9853); // Default to Chiang Mai
+          });
+        }
+        return; // ออกจากฟังก์ชัน
       }
     }
 
     if (permission == LocationPermission.deniedForever) {
-      _showSnackBar('Location permissions are permanently denied.');
-      return;
+      // หากสิทธิ์ถูกปฏิเสธอย่างถาวร
+      _showSnackBar(
+        'Location permissions are permanently denied. Please enable them from settings.',
+      );
+      if (mounted && _center == null) {
+        setState(() {
+          _center = const LatLng(18.7883, 98.9853); // Default to Chiang Mai
+        });
+      }
+      return; // ออกจากฟังก์ชัน
     }
 
+    // 3. เมื่อมีสิทธิ์และบริการเปิดใช้งานแล้ว ให้ดึงตำแหน่ง
     try {
       Position pos = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
+        desiredAccuracy: LocationAccuracy.high, // ขอความแม่นยำสูง
       );
-      _center = LatLng(pos.latitude, pos.longitude);
+      // อัปเดต _center และเรียก setState
+      if (mounted) {
+        setState(() {
+          _center = LatLng(pos.latitude, pos.longitude);
+        });
+      }
 
+      // หาก map controller พร้อมแล้ว ให้เลื่อนแผนที่ไปที่ตำแหน่งปัจจุบัน
       if (_controller.isCompleted) {
         final mapCtrl = await _controller.future;
         mapCtrl.animateCamera(CameraUpdate.newLatLng(_center!));
       }
     } catch (e) {
+      // หากเกิดข้อผิดพลาดในการดึงตำแหน่ง
+      debugPrint('Failed to get your current location: $e');
       _showSnackBar('Failed to get your current location.');
+      // หาก _center ยังเป็น null (ไม่เคยได้ตำแหน่งมาก่อน) ให้ตั้งค่าเริ่มต้น
+      if (mounted && _center == null) {
+        setState(() {
+          _center = const LatLng(18.7883, 98.9853); // Default to Chiang Mai
+        });
+      }
     }
   }
 
+  // ฟังก์ชันสำหรับแสดง SnackBar
   void _showSnackBar(String message) {
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    // แสดง CircularProgressIndicator ขณะโหลดตำแหน่งเริ่มต้น
     if (_isLoading || _center == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return Scaffold(
-      key: _scaffoldKey,
-      drawer: _buildDrawer(),
+      key: _scaffoldKey, // กำหนด GlobalKey ให้ Scaffold เพื่อใช้เปิด Drawer
+      drawer: _buildDrawer(context), // สร้าง Drawer
       body: Stack(
         children: [
           GoogleMap(
-            myLocationEnabled: true,
-            initialCameraPosition: CameraPosition(target: _center!, zoom: 15),
+            myLocationEnabled: true, // เปิดใช้งาน My Location
+            initialCameraPosition: CameraPosition(
+              target: _center!,
+              zoom: 15,
+            ), // ตำแหน่งเริ่มต้นของกล้อง
             markers: {
-              Marker(markerId: const MarkerId('center'), position: _center!),
+              Marker(
+                markerId: const MarkerId('center'),
+                position: _center!,
+              ), // Marker ที่ตำแหน่งกลาง
             },
             circles: {
               Circle(
@@ -107,18 +164,21 @@ class _MapScreenState extends State<MapScreen> {
               ),
             },
             onMapCreated: (controller) {
-              _controller.complete(controller);
+              _controller.complete(
+                controller,
+              ); // เมื่อแผนที่สร้างเสร็จ ให้เก็บ controller
             },
           ),
-          _buildTopBar(),
-          _buildFloatingButtons(),
-          _buildBottomSheet(),
+          _buildTopBar(), // แถบด้านบน (Search)
+          _buildFloatingButtons(), // ปุ่มลอยด้านข้าง
+          _buildBottomSheet(), // Bottom Sheet ข้อมูล
         ],
       ),
     );
   }
 
-  Widget _buildDrawer() {
+  // ฟังก์ชันสำหรับสร้าง Drawer
+  Widget _buildDrawer(BuildContext context) {
     return Drawer(
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.only(
@@ -126,53 +186,145 @@ class _MapScreenState extends State<MapScreen> {
           bottomRight: Radius.circular(25),
         ),
       ),
-      width: MediaQuery.of(context).size.width * 0.75,
+      width:
+          MediaQuery.of(context).size.width *
+          0.75, // ความกว้าง Drawer ปรับตามขนาดจอ
       child: Container(
         color: Colors.blue.shade800,
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
-            DrawerHeader(
-              decoration: BoxDecoration(color: Colors.blue.shade900),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Align(
-                    alignment: Alignment.topRight,
-                    child: IconButton(
-                      icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
-                      onPressed: () => Navigator.pop(context),
+            // ส่วนหัวของ Drawer (ปรับขนาดตามหน้าจอ)
+            LayoutBuilder(
+              builder: (BuildContext context, BoxConstraints constraints) {
+                double headerHeight =
+                    MediaQuery.of(context).size.height *
+                    0.25; // 25% ของความสูงหน้าจอ
+
+                // กำหนดความสูงขั้นต่ำและสูงสุด
+                final double minContentHeight =
+                    120.0; // ความสูงขั้นต่ำสำหรับเนื้อหาใน Header (ไอคอน, อวตาร, ชื่อ)
+                final double minHeaderHeight =
+                    MediaQuery.of(context).padding.top + minContentHeight;
+                final double maxHeaderHeight =
+                    MediaQuery.of(context).size.height *
+                    0.35; // ไม่เกิน 35% ของหน้าจอ
+
+                // จำกัดความสูงของ Header ให้อยู่ในช่วงที่เหมาะสม
+                headerHeight = headerHeight.clamp(
+                  minHeaderHeight,
+                  maxHeaderHeight,
+                );
+
+                return SizedBox(
+                  height: headerHeight,
+                  child: DrawerHeader(
+                    decoration: BoxDecoration(color: Colors.blue.shade900),
+                    margin:
+                        EdgeInsets.zero, // ลบ margin เริ่มต้นของ DrawerHeader
+                    padding: const EdgeInsets.fromLTRB(
+                      16,
+                      8,
+                      8,
+                      16,
+                    ), // กำหนด padding เอง
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Align(
+                          alignment: Alignment.topRight,
+                          child: IconButton(
+                            icon: const Icon(
+                              Icons.arrow_back_ios,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                            onPressed: () => Navigator.pop(context),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(
+                              minWidth: 30,
+                              minHeight: 30,
+                            ),
+                          ),
+                        ),
+                        const Spacer(), // ดัน IconButton ไปด้านบน และเนื้อหาอื่นลงล่าง
+                        const CircleAvatar(
+                          radius: 30,
+                          backgroundColor: Colors.white,
+                        ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          'ชื่อผู้ใช้',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const CircleAvatar(radius: 35, backgroundColor: Colors.white),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'ชื่อผู้ใช้',
-                    style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
+                );
+              },
             ),
-            _drawerItem(Icons.person, 'โปรไฟล์'),
-            _drawerItem(Icons.home, 'หน้าแรก'),
-            _drawerItem(Icons.filter_list, 'ตัวกรอง'),
-            _drawerItem(Icons.history, 'ประวัติ'),
-            _drawerItem(Icons.add_box, 'เพิ่มข้อมูล'),
-            _drawerItem(Icons.logout, 'ออกจากระบบ'),
+
+            // รายการเมนูใน Drawer (ใช้ DrawerListItem ที่แยกออกมา)
+            DrawerListItem(
+              icon: Icons.person,
+              title: 'โปรไฟล์',
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ProfileScreen(),
+                  ),
+                );
+              },
+            ),
+            DrawerListItem(
+              icon: Icons.home,
+              title: 'หน้าแรก',
+              onTap: () {
+                // TODO: เพิ่มโค้ดเมื่อคลิก "หน้าแรก" (เช่น การนำทางไปหน้า Home)
+                // Navigator.push(context, MaterialPageRoute(builder: (context) => const HomeScreen()));
+              },
+            ),
+            DrawerListItem(
+              icon: Icons.filter_list,
+              title: 'ตัวกรอง',
+              onTap: () {
+                // TODO: เพิ่มโค้ดเมื่อคลิก "ตัวกรอง"
+              },
+            ),
+            DrawerListItem(
+              icon: Icons.history,
+              title: 'ประวัติ',
+              onTap: () {
+                // TODO: เพิ่มโค้ดเมื่อคลิก "ประวัติ"
+              },
+            ),
+            DrawerListItem(
+              icon: Icons.add_box,
+              title: 'เพิ่มข้อมูล',
+              onTap: () {
+                // TODO: เพิ่มโค้ดเมื่อคลิก "เพิ่มข้อมูล"
+              },
+            ),
+            DrawerListItem(
+              icon: Icons.logout,
+              title: 'ออกจากระบบ',
+              onTap: () {
+                // TODO: เพิ่มโค้ดเมื่อคลิก "ออกจากระบบ" (เช่น การนำทางกลับไปหน้า Login)
+                // Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const AuthScreen()));
+              },
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _drawerItem(IconData icon, String title) {
-    return ListTile(
-      leading: Icon(icon, color: Colors.white),
-      title: Text(title, style: const TextStyle(color: Colors.white)),
-      onTap: () => Navigator.pop(context),
-    );
-  }
-
+  // ฟังก์ชันสำหรับสร้างแถบ Search ด้านบน
   Widget _buildTopBar() {
     return Positioned(
       top: 40,
@@ -189,11 +341,15 @@ class _MapScreenState extends State<MapScreen> {
           children: [
             IconButton(
               icon: const Icon(Icons.menu, color: Colors.white),
-              onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+              onPressed:
+                  () => _scaffoldKey.currentState?.openDrawer(), // เปิด Drawer
             ),
             const SizedBox(width: 16),
             const Expanded(
-              child: Text('Search', style: TextStyle(color: Colors.white, fontSize: 18)),
+              child: Text(
+                'Search',
+                style: TextStyle(color: Colors.white, fontSize: 18),
+              ),
             ),
             const Icon(Icons.search, color: Colors.white),
           ],
@@ -202,6 +358,7 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
+  // ฟังก์ชันสำหรับสร้างปุ่มลอยด้านข้าง
   Widget _buildFloatingButtons() {
     return Positioned(
       top: 110,
@@ -210,15 +367,19 @@ class _MapScreenState extends State<MapScreen> {
         children: [
           FloatingActionButton(
             mini: true,
-            onPressed: _determinePosition,
+            onPressed:
+                _determinePosition, // ปุ่ม My Location กดแล้วดึงตำแหน่งใหม่
             child: const Icon(Icons.my_location),
           ),
           const SizedBox(height: 8),
           FloatingActionButton(
             mini: true,
             onPressed: () async {
-              final controller = await _controller.future;
-              controller.animateCamera(CameraUpdate.zoomIn());
+              // ซูมเข้า
+              if (_controller.isCompleted) {
+                final controller = await _controller.future;
+                controller.animateCamera(CameraUpdate.zoomIn());
+              }
             },
             child: const Icon(Icons.center_focus_strong),
           ),
@@ -226,7 +387,7 @@ class _MapScreenState extends State<MapScreen> {
           FloatingActionButton(
             mini: true,
             onPressed: () {
-              // เพิ่มหมุดในอนาคต
+              // TODO: เพิ่มฟังก์ชันสำหรับปุ่ม Pin Location (ถ้ามี)
             },
             child: const Icon(Icons.location_pin),
           ),
@@ -235,49 +396,56 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
+  // ฟังก์ชันสำหรับสร้าง Bottom Sheet
   Widget _buildBottomSheet() {
     return DraggableScrollableSheet(
       initialChildSize: 0.3,
       minChildSize: 0.2,
       maxChildSize: 0.6,
-      builder: (context, scrollCtrl) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
-        ),
-        child: ListView(
-          controller: scrollCtrl,
-          padding: const EdgeInsets.all(16),
-          children: [
-            const Center(child: Icon(Icons.drag_handle, color: Colors.grey)),
-            const SizedBox(height: 8),
-            Row(
-              children: const [
-                Icon(Icons.location_on, color: Colors.red),
-                SizedBox(width: 8),
-                Text('ไข้เลือดออก', style: TextStyle(fontSize: 18)),
-                Spacer(),
-                Text('7d3hr19m28s'),
+      builder:
+          (context, scrollCtrl) => Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+            ),
+            child: ListView(
+              controller: scrollCtrl,
+              padding: const EdgeInsets.all(16),
+              children: [
+                const Center(
+                  child: Icon(Icons.drag_handle, color: Colors.grey),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: const [
+                    Icon(Icons.location_on, color: Colors.red),
+                    SizedBox(width: 8),
+                    Text('ไข้เลือดออก', style: TextStyle(fontSize: 18)),
+                    Spacer(),
+                    Text('7d3hr19m28s'),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: const [
+                    Text('ระดับความอันตราย: ', style: TextStyle(fontSize: 16)),
+                    Text(
+                      'มาก',
+                      style: TextStyle(fontSize: 16, color: Colors.red),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                const TextField(
+                  maxLines: 4,
+                  decoration: InputDecoration(
+                    border: OutlineInputBorder(),
+                    labelText: 'คำอธิบาย',
+                  ),
+                ),
               ],
             ),
-            const SizedBox(height: 8),
-            Row(
-              children: const [
-                Text('ระดับความอันตราย: ', style: TextStyle(fontSize: 16)),
-                Text('มาก', style: TextStyle(fontSize: 16, color: Colors.red)),
-              ],
-            ),
-            const SizedBox(height: 12),
-            const TextField(
-              maxLines: 4,
-              decoration: InputDecoration(
-                border: OutlineInputBorder(),
-                labelText: 'คำอธิบาย',
-              ),
-            ),
-          ],
-        ),
-      ),
+          ),
     );
   }
 }

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'screens/auth_screen.dart';
-import 'screens/map_screen.dart';
 
 void main() {
   runApp(const MyApp());
