@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'map_screen.dart';
 
 class FilterScreen extends StatefulWidget {
   const FilterScreen({super.key});
@@ -53,7 +54,10 @@ class _FilterScreenState extends State<FilterScreen> {
                 leading: IconButton(
                   icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 24),
                   onPressed: () {
-                    Navigator.of(context).pop();
+                    Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (_) => const MapScreen()),
+                      );
                   },
                 ),
                 centerTitle: true,

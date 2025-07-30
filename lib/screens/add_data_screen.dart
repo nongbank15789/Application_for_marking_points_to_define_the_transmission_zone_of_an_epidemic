@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'map_screen.dart';
 
 class AddDataScreen extends StatefulWidget {
   const AddDataScreen({super.key});
@@ -75,7 +76,10 @@ class _AddDataScreenState extends State<AddDataScreen> {
                     size: 24,
                   ),
                   onPressed: () {
-                    Navigator.of(context).pop(); // กลับไปยังหน้าก่อนหน้า
+                    Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (_) => const MapScreen()),
+                      ); 
                   },
                 ),
                 centerTitle: true, // จัดTitle ให้อยู่ตรงกลาง

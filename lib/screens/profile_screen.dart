@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'map_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -25,7 +26,10 @@ class ProfileScreen extends StatelessWidget {
                 leading: IconButton(
                   icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 24),
                   onPressed: () {
-                    Navigator.of(context).pop();
+                    Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (_) => const MapScreen()),
+                      );
                   },
                 ),
                 centerTitle: true,
