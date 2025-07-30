@@ -4,6 +4,9 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'drawer_list_item.dart';
 import 'profile_screen.dart';
+import 'filter_screen.dart';
+import 'history_screen.dart';
+import 'add_data_screen.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -274,43 +277,47 @@ class _MapScreenState extends State<MapScreen> {
               title: 'โปรไฟล์',
               onTap: () {
                 Navigator.pop(context); // ปิด Drawer ก่อน
-                Future.delayed(const Duration(milliseconds: 300), () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const ProfileScreen(),
-                    ),
-                  );
-                });
-              },
-            ),
-            DrawerListItem(
-              icon: Icons.home,
-              title: 'หน้าแรก',
-              onTap: () {
-                // TODO: เพิ่มโค้ดเมื่อคลิก "หน้าแรก" (เช่น การนำทางไปหน้า Home)
-                // Navigator.push(context, MaterialPageRoute(builder: (context) => const HomeScreen()));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ProfileScreen(),
+                  ),
+                );
               },
             ),
             DrawerListItem(
               icon: Icons.filter_list,
               title: 'ตัวกรอง',
               onTap: () {
-                // TODO: เพิ่มโค้ดเมื่อคลิก "ตัวกรอง"
+                Navigator.pop(context); // ปิด Drawer ก่อน
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const FilterScreen()),
+                );
               },
             ),
             DrawerListItem(
               icon: Icons.history,
               title: 'ประวัติ',
               onTap: () {
-                // TODO: เพิ่มโค้ดเมื่อคลิก "ประวัติ"
+                Navigator.pop(context); // ปิด Drawer ก่อน
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const HistoryScreen(),
+                  ),
+                );
               },
             ),
             DrawerListItem(
               icon: Icons.add_box,
               title: 'เพิ่มข้อมูล',
               onTap: () {
-                // TODO: เพิ่มโค้ดเมื่อคลิก "เพิ่มข้อมูล"
+                Navigator.pop(context); // ปิด Drawer ก่อน
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const AddDataScreen()),
+                );
               },
             ),
             DrawerListItem(
