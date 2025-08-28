@@ -78,7 +78,7 @@ class _AddDataScreenState extends State<AddDataScreen> {
                   onPressed: () {
                     Navigator.pushReplacement(
                         context,
-                        MaterialPageRoute(builder: (_) => const MapScreen()),
+                        MaterialPageRoute(builder: (_) => const MapScreen()),    
                       ); 
                   },
                 ),
