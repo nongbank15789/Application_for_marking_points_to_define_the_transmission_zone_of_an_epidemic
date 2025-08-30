@@ -24,12 +24,16 @@ class ProfileScreen extends StatelessWidget {
                 backgroundColor: Colors.transparent,
                 elevation: 0,
                 leading: IconButton(
-                  icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 24),
+                  icon: const Icon(
+                    Icons.arrow_back_ios,
+                    color: Colors.white,
+                    size: 24,
+                  ),
                   onPressed: () {
                     Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (_) => const MapScreen()),
-                      );
+                      context,
+                      MaterialPageRoute(builder: (_) => const MapScreen()),
+                    );
                   },
                 ),
                 centerTitle: true,
@@ -46,7 +50,6 @@ class ProfileScreen extends StatelessWidget {
               // **********************************************
               // ******** เริ่มทดสอบโดยการเปิดทีละส่วน ********
               // **********************************************
-
               Expanded(
                 child: SingleChildScrollView(
                   child: Column(
@@ -84,8 +87,17 @@ class ProfileScreen extends StatelessWidget {
                             _buildInfoField(context, "ชื่อ", "อนงค์"),
                             _buildInfoField(context, "บทบาท", "ผู้ใช้งาน"),
                             _buildInfoField(context, "Username", "nicalsobank"),
-                            _buildInfoField(context, "Email", "nicasio15789@gmail.com"),
-                            _buildInfoField(context, "รหัสผ่าน", "1234567890", obscureText: true),
+                            _buildInfoField(
+                              context,
+                              "Email",
+                              "nicasio15789@gmail.com",
+                            ),
+                            _buildInfoField(
+                              context,
+                              "รหัสผ่าน",
+                              "1234567890",
+                              obscureText: true,
+                            ),
                           ],
                         ),
                       ),
@@ -102,7 +114,12 @@ class ProfileScreen extends StatelessWidget {
   }
 
   // Widget สำหรับแสดงแต่ละช่องข้อมูล
-  Widget _buildInfoField(BuildContext context, String label, String value, {bool obscureText = false}) {
+  Widget _buildInfoField(
+    BuildContext context,
+    String label,
+    String value, {
+    bool obscureText = false,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Column(

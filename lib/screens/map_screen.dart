@@ -316,7 +316,9 @@ class _MapScreenState extends State<MapScreen> {
                 Navigator.pop(context); // ปิด Drawer ก่อน
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const AddDataScreen()),
+                  MaterialPageRoute(
+                    builder: (context) => const AddDataScreen(),
+                  ),
                 );
               },
             ),
