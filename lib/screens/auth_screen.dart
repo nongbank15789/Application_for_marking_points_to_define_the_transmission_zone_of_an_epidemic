@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'map_screen.dart';
-  
+
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
   @override
@@ -16,6 +18,119 @@ class _AuthScreenState extends State<AuthScreen> {
   final usernameController = TextEditingController();
   final passwordController = TextEditingController();
   final confirmPasswordController = TextEditingController();
+
+  final String baseUrl = 'http://10.0.2.2/api';
+
+  Future<void> loginUser() async {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('กำลังเข้าสู่ระบบ...')),
+    );
+    final url = Uri.parse('$baseUrl/login.php');
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'username': usernameController.text,
+          'password': passwordController.text,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('เข้าสู่ระบบสำเร็จ!')),
+          );
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const MapScreen()),
+          );
+        }
+      } else {
+        if (mounted) {
+          final errorBody = json.decode(response.body);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('เข้าสู่ระบบไม่สำเร็จ: ${errorBody['message']}'),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('เกิดข้อผิดพลาดในการเชื่อมต่อ: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> registerUser() async {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('กำลังลงทะเบียน...')),
+    );
+    final url = Uri.parse('$baseUrl/register.php');
+    if (passwordController.text != confirmPasswordController.text) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('รหัสผ่านไม่ตรงกัน')),
+        );
+      }
+      return;
+    }
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'username': usernameController.text,
+          'email': emailController.text,
+          'password': passwordController.text,
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('ลงทะเบียนสำเร็จ!')),
+          );
+          // แก้ไขตรงนี้: ล้างค่า controllers หลังจากลงทะเบียนสำเร็จ
+          usernameController.clear();
+          emailController.clear();
+          passwordController.clear();
+          confirmPasswordController.clear();
+
+          setState(() {
+            isLogin = true;
+          });
+        }
+      } else {
+        if (mounted) {
+          final errorBody = json.decode(response.body);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('ลงทะเบียนไม่สำเร็จ: ${errorBody['message']}'),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('เกิดข้อผิดพลาดในการเชื่อมต่อ: $e')),
+        );
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    emailController.dispose();
+    usernameController.dispose();
+    passwordController.dispose();
+    confirmPasswordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -65,14 +180,9 @@ class _AuthScreenState extends State<AuthScreen> {
                 ElevatedButton(
                   onPressed: () {
                     if (isLogin) {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (_) => const MapScreen()),
-                      );
+                      loginUser();
                     } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('ยังไม่เปิดใช้งาน Sign Up')),
-                      );
+                      registerUser();
                     }
                   },
                   style: ElevatedButton.styleFrom(
@@ -159,7 +269,7 @@ class _AuthScreenState extends State<AuthScreen> {
   Widget buildLoginForm() {
     return Column(
       children: [
-        buildTextField("Email", Icons.email, emailController),
+        buildTextField("Username", Icons.person, usernameController),
         buildPasswordField("Password", passwordController, () {
           setState(() => showPassword = !showPassword);
         }, showPassword),
