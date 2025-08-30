@@ -47,9 +47,6 @@ class ProfileScreen extends StatelessWidget {
                 ),
               ),
 
-              // **********************************************
-              // ******** เริ่มทดสอบโดยการเปิดทีละส่วน ********
-              // **********************************************
               Expanded(
                 child: SingleChildScrollView(
                   child: Column(

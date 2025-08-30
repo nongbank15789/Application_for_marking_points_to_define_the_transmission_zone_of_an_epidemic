@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:project/screens/auth_screen.dart';
 import 'drawer_list_item.dart';
 import 'profile_screen.dart';
 import 'filter_screen.dart';
@@ -326,8 +327,15 @@ class _MapScreenState extends State<MapScreen> {
               icon: Icons.logout,
               title: 'ออกจากระบบ',
               onTap: () {
-                // TODO: เพิ่มโค้ดเมื่อคลิก "ออกจากระบบ" (เช่น การนำทางกลับไปหน้า Login)
-                // Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const AuthScreen()));
+                Navigator.pushReplacement(
+                  context,
+                  PageRouteBuilder(
+                    pageBuilder:
+                        (context, animation1, animation2) => AuthScreen(),
+                    transitionDuration: Duration.zero,
+                    reverseTransitionDuration: Duration.zero,
+                  ),
+                );
               },
             ),
           ],

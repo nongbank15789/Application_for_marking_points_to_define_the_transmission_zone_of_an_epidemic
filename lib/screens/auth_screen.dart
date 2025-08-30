@@ -35,9 +35,9 @@ class _AuthScreenState extends State<AuthScreen> {
       }
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('กำลังเข้าสู่ระบบ...')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('กำลังเข้าสู่ระบบ...')));
     final url = Uri.parse('$baseUrl/login.php');
     try {
       final response = await http.post(
@@ -51,12 +51,16 @@ class _AuthScreenState extends State<AuthScreen> {
 
       if (response.statusCode == 200) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('เข้าสู่ระบบสำเร็จ!')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('เข้าสู่ระบบสำเร็จ!')));
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => const MapScreen()),
+            PageRouteBuilder(
+              pageBuilder: (context, animation1, animation2) => MapScreen(),
+              transitionDuration: Duration.zero,
+              reverseTransitionDuration: Duration.zero,
+            ),
           );
         }
       } else {
@@ -80,9 +84,9 @@ class _AuthScreenState extends State<AuthScreen> {
 
   Future<void> registerUser() async {
     if (_formKey.currentState!.validate()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('กำลังลงทะเบียน...')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('กำลังลงทะเบียน...')));
       final url = Uri.parse('$baseUrl/register.php');
       try {
         final response = await http.post(
@@ -99,9 +103,9 @@ class _AuthScreenState extends State<AuthScreen> {
 
         if (response.statusCode == 201) {
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('ลงทะเบียนสำเร็จ!')),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(const SnackBar(content: Text('ลงทะเบียนสำเร็จ!')));
             nameController.clear();
             surnameController.clear();
             usernameController.clear();
@@ -215,8 +219,10 @@ class _AuthScreenState extends State<AuthScreen> {
                           borderRadius: BorderRadius.circular(30),
                         ),
                         child: const Center(
-                          child: Text("Continue",
-                              style: TextStyle(fontSize: 18, color: Colors.white)),
+                          child: Text(
+                            "Continue",
+                            style: TextStyle(fontSize: 18, color: Colors.white),
+                          ),
                         ),
                       ),
                     ),
@@ -253,9 +259,12 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Widget buildTextFormField(
-      String label, IconData icon, TextEditingController controller,
-      {String? Function(String?)? validator,
-      List<TextInputFormatter>? inputFormatters}) {
+    String label,
+    IconData icon,
+    TextEditingController controller, {
+    String? Function(String?)? validator,
+    List<TextInputFormatter>? inputFormatters,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: TextFormField(
@@ -272,8 +281,12 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Widget buildPasswordFormField(
-      String label, TextEditingController controller, VoidCallback toggleVisibility, bool visible,
-      {String? Function(String?)? validator}) {
+    String label,
+    TextEditingController controller,
+    VoidCallback toggleVisibility,
+    bool visible, {
+    String? Function(String?)? validator,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: TextFormField(
@@ -295,28 +308,42 @@ class _AuthScreenState extends State<AuthScreen> {
   Widget buildLoginForm() {
     return Column(
       children: [
-        buildTextFormField("Username", Icons.person, usernameController, validator: (value) {
-          if (value == null || value.isEmpty) {
-            return 'กรุณากรอก Username';
-          }
-          return null;
-        }),
-        buildPasswordFormField("Password", passwordController, () {
-          setState(() => showPassword = !showPassword);
-        }, showPassword, validator: (value) {
-          if (value == null || value.isEmpty) {
-            return 'กรุณากรอกรหัสผ่าน';
-          }
-          if (value.length < 6) {
-            return 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร';
-          }
-          return null;
-        }),
+        buildTextFormField(
+          "Username",
+          Icons.person,
+          usernameController,
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'กรุณากรอก Username';
+            }
+            return null;
+          },
+        ),
+        buildPasswordFormField(
+          "Password",
+          passwordController,
+          () {
+            setState(() => showPassword = !showPassword);
+          },
+          showPassword,
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'กรุณากรอกรหัสผ่าน';
+            }
+            if (value.length < 6) {
+              return 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร';
+            }
+            return null;
+          },
+        ),
         Align(
           alignment: Alignment.centerRight,
           child: TextButton(
             onPressed: () {},
-            child: const Text("Forgot Password?", style: TextStyle(color: Colors.grey)),
+            child: const Text(
+              "Forgot Password?",
+              style: TextStyle(color: Colors.grey),
+            ),
           ),
         ),
       ],
@@ -326,70 +353,102 @@ class _AuthScreenState extends State<AuthScreen> {
   Widget buildSignUpForm() {
     final nameRegExp = RegExp(r'^[\u0E00-\u0E7F\sa-zA-Z]+$');
     final usernameEmailRegExp = RegExp(r'^[a-zA-Z0-9_.]+$');
-    
+
     return Column(
       children: [
-        buildTextFormField("ชื่อ", Icons.person, nameController, validator: (value) {
-          if (value == null || value.isEmpty) {
-            return 'กรุณากรอกชื่อ';
-          }
-          return null;
-        }, inputFormatters: [
-          FilteringTextInputFormatter.allow(nameRegExp),
-        ]),
-        buildTextFormField("นามสกุล", Icons.person, surnameController, validator: (value) {
-          if (value == null || value.isEmpty) {
-            return 'กรุณากรอกนามสกุล';
-          }
-          return null;
-        }, inputFormatters: [
-          FilteringTextInputFormatter.allow(nameRegExp),
-        ]),
-        buildTextFormField("Username", Icons.person, usernameController, validator: (value) {
-          if (value == null || value.isEmpty) {
-            return 'กรุณากรอก Username';
-          }
-          if (!usernameEmailRegExp.hasMatch(value)) {
-            return 'Username ต้องเป็นตัวอักษรภาษาอังกฤษหรือตัวเลขเท่านั้น';
-          }
-          return null;
-        }, inputFormatters: [
-          FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9_.]')),
-        ]),
-        buildTextFormField("Email", Icons.email, emailController, validator: (value) {
-          if (value == null || value.isEmpty) {
-            return 'กรุณากรอก Email';
-          }
-          final emailRegExp = RegExp(r'^[^@]+@[^@]+\.[^@]+');
-          if (!emailRegExp.hasMatch(value)) {
-            return 'กรุณาตรวจสอบรูปแบบ Email';
-          }
-          return null;
-        }, inputFormatters: [
-          FilteringTextInputFormatter.allow(RegExp(r'[\w@\.-]')),
-        ]),
-        buildPasswordFormField("Password", passwordController, () {
-          setState(() => showPassword = !showPassword);
-        }, showPassword, validator: (value) {
-          if (value == null || value.isEmpty) {
-            return 'กรุณากรอกรหัสผ่าน';
-          }
-          if (value.length < 6) {
-            return 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร';
-          }
-          return null;
-        }),
-        buildPasswordFormField("Confirm Password", confirmPasswordController, () {
-          setState(() => showConfirmPassword = !showConfirmPassword);
-        }, showConfirmPassword, validator: (value) {
-          if (value == null || value.isEmpty) {
-            return 'กรุณากรอกรหัสผ่านอีกครั้ง';
-          }
-          if (value != passwordController.text) {
-            return 'รหัสผ่านไม่ตรงกัน';
-          }
-          return null;
-        }),
+        buildTextFormField(
+          "ชื่อ",
+          Icons.person,
+          nameController,
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'กรุณากรอกชื่อ';
+            }
+            return null;
+          },
+          inputFormatters: [FilteringTextInputFormatter.allow(nameRegExp)],
+        ),
+        buildTextFormField(
+          "นามสกุล",
+          Icons.person,
+          surnameController,
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'กรุณากรอกนามสกุล';
+            }
+            return null;
+          },
+          inputFormatters: [FilteringTextInputFormatter.allow(nameRegExp)],
+        ),
+        buildTextFormField(
+          "Username",
+          Icons.person,
+          usernameController,
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'กรุณากรอก Username';
+            }
+            if (!usernameEmailRegExp.hasMatch(value)) {
+              return 'Username ต้องเป็นตัวอักษรภาษาอังกฤษหรือตัวเลขเท่านั้น';
+            }
+            return null;
+          },
+          inputFormatters: [
+            FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9_.]')),
+          ],
+        ),
+        buildTextFormField(
+          "Email",
+          Icons.email,
+          emailController,
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'กรุณากรอก Email';
+            }
+            final emailRegExp = RegExp(r'^[^@]+@[^@]+\.[^@]+');
+            if (!emailRegExp.hasMatch(value)) {
+              return 'กรุณาตรวจสอบรูปแบบ Email';
+            }
+            return null;
+          },
+          inputFormatters: [
+            FilteringTextInputFormatter.allow(RegExp(r'[\w@\.-]')),
+          ],
+        ),
+        buildPasswordFormField(
+          "Password",
+          passwordController,
+          () {
+            setState(() => showPassword = !showPassword);
+          },
+          showPassword,
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'กรุณากรอกรหัสผ่าน';
+            }
+            if (value.length < 6) {
+              return 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร';
+            }
+            return null;
+          },
+        ),
+        buildPasswordFormField(
+          "Confirm Password",
+          confirmPasswordController,
+          () {
+            setState(() => showConfirmPassword = !showConfirmPassword);
+          },
+          showConfirmPassword,
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'กรุณากรอกรหัสผ่านอีกครั้ง';
+            }
+            if (value != passwordController.text) {
+              return 'รหัสผ่านไม่ตรงกัน';
+            }
+            return null;
+          },
+        ),
       ],
     );
   }
