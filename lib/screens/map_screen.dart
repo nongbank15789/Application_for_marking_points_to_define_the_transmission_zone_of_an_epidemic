@@ -136,7 +136,7 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
-  // ฟังก์ชันสำหรับแสดง SnackBar
+
   void _showSnackBar(String message) {
     if (mounted) {
       ScaffoldMessenger.of(
