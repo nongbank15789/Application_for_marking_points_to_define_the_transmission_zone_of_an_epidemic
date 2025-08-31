@@ -52,6 +52,8 @@ class _MapScreenState extends State<MapScreen> {
 
   final Set<Marker> _markers = {};
 
+  CameraPosition? _currentCameraPosition; // เพิ่มตัวแปรนี้
+
   @override
   void initState() {
     super.initState();
@@ -313,45 +315,34 @@ class _MapScreenState extends State<MapScreen> {
 
     return Scaffold(
       key: _scaffoldKey,
-
       drawer: _buildDrawer(context),
-
       body: Stack(
         children: [
           GoogleMap(
             myLocationEnabled: true,
-
             initialCameraPosition: CameraPosition(target: _center!, zoom: 15),
-
             markers: _markers,
-
+            compassEnabled: false,
             circles: {
               Circle(
                 circleId: const CircleId('danger_zone'),
-
                 center: _center!,
-
                 radius: _circleRadius,
-
                 fillColor: Colors.red.withOpacity(0.2),
-
                 strokeColor: Colors.red.withOpacity(0.5),
-
                 strokeWidth: 2,
               ),
             },
-
             onMapCreated: (controller) {
               _controller.complete(controller);
             },
-
             onLongPress: _addMarker,
+            onCameraMove: (position) {
+              _currentCameraPosition = position; // อัปเดตตำแหน่งกล้อง
+            },
           ),
-
           _buildTopBar(),
-
           _buildFloatingButtons(),
-
           _buildBottomSheet(),
         ],
       ),
@@ -627,45 +618,54 @@ class _MapScreenState extends State<MapScreen> {
   Widget _buildFloatingButtons() {
     return Positioned(
       top: 110,
-
       right: 16,
-
       child: Column(
         children: [
           FloatingActionButton(
             mini: true,
-
             onPressed: _determinePosition,
-
             child: const Icon(Icons.my_location),
           ),
-
           const SizedBox(height: 8),
-
           FloatingActionButton(
             mini: true,
-
             onPressed: () async {
               if (_controller.isCompleted) {
                 final controller = await _controller.future;
-
                 controller.animateCamera(CameraUpdate.zoomIn());
               }
             },
-
             child: const Icon(Icons.center_focus_strong),
           ),
-
           const SizedBox(height: 8),
-
           FloatingActionButton(
             mini: true,
-
             onPressed: () {
               // TODO: เพิ่มฟังก์ชันสำหรับปุ่ม Pin Location (ถ้ามี)
             },
-
             child: const Icon(Icons.location_pin),
+          ),
+          const SizedBox(height: 8),
+          // ปุ่มเข็มทิศ
+          FloatingActionButton(
+            mini: true,
+            heroTag: "compassBtn",
+            onPressed: () async {
+              if (_controller.isCompleted && _currentCameraPosition != null) {
+                final controller = await _controller.future;
+                controller.animateCamera(
+                  CameraUpdate.newCameraPosition(
+                    CameraPosition(
+                      target: _currentCameraPosition!.target,
+                      zoom: _currentCameraPosition!.zoom,
+                      bearing: 0, // หมุนกล้องไปทิศเหนือ
+                      tilt: _currentCameraPosition!.tilt,
+                    ),
+                  ),
+                );
+              }
+            },
+            child: const Icon(Icons.explore),
           ),
         ],
       ),
