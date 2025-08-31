@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:http/http.dart' as http;
 import 'package:project/screens/auth_screen.dart';
 import 'drawer_list_item.dart';
 import 'profile_screen.dart';
@@ -23,6 +24,8 @@ class _MapScreenState extends State<MapScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final Completer<GoogleMapController> _controller = Completer();
 
+  Map<String, dynamic>? userData;
+
   int? userId;
   LatLng? _center; // ตำแหน่งกลางแผนที่ อาจจะเป็น null ในตอนแรก
   final double _circleRadius = 300;
@@ -35,11 +38,37 @@ class _MapScreenState extends State<MapScreen> {
     _getInitialLocation();
   }
 
+  Future<void> _fetchUserData() async {
+    if (userId == null) return;
+
+    try {
+      final response = await http.get(
+        Uri.parse("http://10.0.2.2/api/get_user.php?id=$userId"),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        if (data is List && data.isNotEmpty) {
+          setState(() {
+            userData = data[0]; // เก็บข้อมูล user
+          });
+        }
+      } else {
+        debugPrint("❌ Failed to fetch user data: ${response.statusCode}");
+      }
+    } catch (e) {
+      debugPrint("❌ Error fetching user data: $e");
+    }
+  }
+
   Future<void> _loadUserId() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       userId = widget.userId ?? prefs.getInt('userId');
     });
+
+    _fetchUserData();
   }
 
   // ฟังก์ชันสำหรับดึงตำแหน่งเริ่มต้นและจัดการสถานะโหลด
@@ -135,7 +164,6 @@ class _MapScreenState extends State<MapScreen> {
       }
     }
   }
-
 
   void _showSnackBar(String message) {
     if (mounted) {
@@ -264,14 +292,29 @@ class _MapScreenState extends State<MapScreen> {
                           ),
                         ),
                         const Spacer(), // ดัน IconButton ไปด้านบน และเนื้อหาอื่นลงล่าง
-                        const CircleAvatar(
+                        CircleAvatar(
                           radius: 30,
-                          backgroundColor: Colors.white,
+                          backgroundImage:
+                              (userData != null && userData!['avatar'] != null)
+                                  ? NetworkImage(
+                                    "http://10.0.2.2/api/${userData!['avatar']}",
+                                  )
+                                  : null,
+                          child:
+                              (userData == null || userData!['avatar'] == null)
+                                  ? const Icon(
+                                    Icons.person,
+                                    size: 40,
+                                    color: Colors.grey,
+                                  )
+                                  : null,
                         ),
                         const SizedBox(height: 6),
-                        const Text(
-                          'ชื่อผู้ใช้',
-                          style: TextStyle(
+                        Text(
+                          userData != null
+                              ? "${userData!['f_name']} ${userData!['l_name']}"
+                              : "ชื่อผู้ใช้",
+                          style: const TextStyle(
                             color: Colors.white,
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
