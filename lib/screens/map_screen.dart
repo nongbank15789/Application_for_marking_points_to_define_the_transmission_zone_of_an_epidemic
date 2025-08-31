@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -8,9 +9,11 @@ import 'profile_screen.dart';
 import 'filter_screen.dart';
 import 'history_screen.dart';
 import 'add_data_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class MapScreen extends StatefulWidget {
-  const MapScreen({super.key});
+  final int? userId; // เพิ่ม userId
+  const MapScreen({super.key, this.userId});
 
   @override
   State<MapScreen> createState() => _MapScreenState();
@@ -20,6 +23,7 @@ class _MapScreenState extends State<MapScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final Completer<GoogleMapController> _controller = Completer();
 
+  int? userId;
   LatLng? _center; // ตำแหน่งกลางแผนที่ อาจจะเป็น null ในตอนแรก
   final double _circleRadius = 300;
   bool _isLoading = true; // สถานะโหลดข้อมูลเริ่มต้น
@@ -27,7 +31,15 @@ class _MapScreenState extends State<MapScreen> {
   @override
   void initState() {
     super.initState();
-    _getInitialLocation(); // เริ่มต้นดึงตำแหน่งเมื่อ Widget ถูกสร้าง
+    _loadUserId();
+    _getInitialLocation();
+  }
+
+  Future<void> _loadUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      userId = widget.userId ?? prefs.getInt('userId');
+    });
   }
 
   // ฟังก์ชันสำหรับดึงตำแหน่งเริ่มต้นและจัดการสถานะโหลด
@@ -277,13 +289,19 @@ class _MapScreenState extends State<MapScreen> {
               icon: Icons.person,
               title: 'โปรไฟล์',
               onTap: () {
-                Navigator.pop(context); // ปิด Drawer ก่อน
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const ProfileScreen(),
-                  ),
-                );
+                if (userId != null) {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ProfileScreen(userId: userId!),
+                    ),
+                  );
+                } else {
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(const SnackBar(content: Text('ไม่พบ userId')));
+                }
               },
             ),
             DrawerListItem(

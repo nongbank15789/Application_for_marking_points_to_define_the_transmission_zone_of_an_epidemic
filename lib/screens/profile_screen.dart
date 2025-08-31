@@ -1,10 +1,14 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 import 'map_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  final int userId; // รับ userId จาก login
+
+  const ProfileScreen({super.key, required this.userId});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -15,19 +19,71 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool isLoading = true;
   String errorMessage = "";
 
+  File? _avatarFile; // เก็บรูปจากเครื่อง
+
   @override
   void initState() {
     super.initState();
-    fetchUser(1); // โหลด user id=1
+    fetchUser(widget.userId); // โหลดข้อมูลผู้ใช้
+  }
+
+  Future<void> _uploadAvatar() async {
+    if (_avatarFile == null) return;
+
+    var request = http.MultipartRequest(
+      'POST',
+      Uri.parse("http://10.0.2.2/api/upload_avatar.php"),
+    );
+    request.fields['user_id'] = widget.userId.toString(); // ส่ง userId ไปด้วย
+    request.files.add(
+      await http.MultipartFile.fromPath('avatar', _avatarFile!.path),
+    );
+
+    var response = await request.send();
+
+    if (response.statusCode == 200) {
+      var respStr = await response.stream.bytesToString();
+      var data = jsonDecode(respStr);
+
+      if (data['success'] == true) {
+        setState(() {
+          userData!['avatar'] = data['avatar']; // อัปเดต path ใน state
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("✅ อัปโหลดรูปโปรไฟล์สำเร็จ")),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("❌ อัปโหลดไม่สำเร็จ: ${data['error']}")),
+        );
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("❌ Server error: ${response.statusCode}")),
+      );
+    }
+  }
+
+  // ฟังก์ชันเลือกรูปจาก Gallery
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+
+    if (pickedFile != null) {
+      setState(() {
+        _avatarFile = File(pickedFile.path);
+      });
+
+      // ✅ อัปโหลดรูปไปเซิร์ฟเวอร์
+      await _uploadAvatar();
+    }
   }
 
   Future<void> fetchUser(int id) async {
     try {
       final response = await http.get(
-        Uri.parse("http://10.0.2.2/api/get_user.php?id=$id"), // 👈 emulator ใช้ 10.0.2.2
+        Uri.parse("http://10.0.2.2/api/get_user.php?id=$id"),
       );
-
-      debugPrint("RAW RESPONSE: ${response.body}");
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -55,7 +111,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         });
       }
     } catch (e) {
-      debugPrint("ERROR: $e");
       setState(() {
         errorMessage = e.toString();
         isLoading = false;
@@ -68,16 +123,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final size = MediaQuery.of(context).size;
 
     if (isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     if (userData == null) {
       return Scaffold(
-        body: Center(
-          child: Text("❌ ไม่พบข้อมูลผู้ใช้\n$errorMessage"),
-        ),
+        body: Center(child: Text("❌ ไม่พบข้อมูลผู้ใช้\n$errorMessage")),
       );
     }
 
@@ -97,10 +148,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 backgroundColor: Colors.transparent,
                 elevation: 0,
                 leading: IconButton(
-                  icon: const Icon(Icons.arrow_back_ios,
-                      color: Colors.white, size: 24),
+                  icon: const Icon(
+                    Icons.arrow_back_ios,
+                    color: Colors.white,
+                    size: 24,
+                  ),
                   onPressed: () {
-                    Navigator.pushReplacement(
+                    Navigator.pop(context);
+                    Navigator.push(
                       context,
                       MaterialPageRoute(builder: (_) => const MapScreen()),
                     );
@@ -123,13 +178,54 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     children: [
                       const SizedBox(height: 20),
 
-                      // Avatar
-                      const CircleAvatar(
-                        radius: 70,
-                        backgroundColor: Colors.white,
-                        child: Icon(Icons.person,
-                            size: 70, color: Colors.grey),
+                      // Avatar + ปุ่มเปลี่ยนรูป
+                      Stack(
+                        alignment: Alignment.bottomRight,
+                        children: [
+                          CircleAvatar(
+                            radius: 70,
+                            backgroundColor: Colors.white,
+                            backgroundImage:
+                                _avatarFile != null
+                                    ? FileImage(_avatarFile!)
+                                    : (userData!['avatar'] != null
+                                            ? NetworkImage(
+                                              "http://10.0.2.2/api/${userData!['avatar']}",
+                                            )
+                                            : null)
+                                        as ImageProvider?,
+                            child:
+                                (_avatarFile == null &&
+                                        userData!['avatar'] == null)
+                                    ? const Icon(
+                                      Icons.person,
+                                      size: 70,
+                                      color: Colors.grey,
+                                    )
+                                    : null,
+                          ),
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: InkWell(
+                              onTap: _pickImage,
+                              child: Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.edit,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
+
                       const SizedBox(height: 30),
 
                       // กล่องข้อมูลผู้ใช้
@@ -152,12 +248,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             _buildInfoField(
-                                "ชื่อ",
-                                "${userData!['f_name']} ${userData!['l_name']}"),
+                              "ชื่อ",
+                              "${userData!['f_name']} ${userData!['l_name']}",
+                            ),
                             _buildInfoField(
-                                "บทบาท", userData!['role'] ?? "ผู้ใช้งาน"),
+                              "บทบาท",
+                              userData!['role'] ?? "ผู้ใช้งาน",
+                            ),
                             _buildInfoField(
-                                "Username", userData!['username'] ?? "-"),
+                              "Username",
+                              userData!['username'] ?? "-",
+                            ),
                             _buildInfoField("Email", userData!['email'] ?? "-"),
                             _buildInfoField(
                               "รหัสผ่าน",

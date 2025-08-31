@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'map_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -50,6 +51,11 @@ class _AuthScreenState extends State<AuthScreen> {
       );
 
       if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        final userId = responseData['user_id']; // รับ user_id จาก PHP
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setInt('userId', responseData['user_id']);
+
         if (mounted) {
           ScaffoldMessenger.of(
             context,
@@ -57,7 +63,9 @@ class _AuthScreenState extends State<AuthScreen> {
           Navigator.pushReplacement(
             context,
             PageRouteBuilder(
-              pageBuilder: (context, animation1, animation2) => MapScreen(),
+              pageBuilder:
+                  (context, animation1, animation2) =>
+                      MapScreen(userId: userId),
               transitionDuration: Duration.zero,
               reverseTransitionDuration: Duration.zero,
             ),

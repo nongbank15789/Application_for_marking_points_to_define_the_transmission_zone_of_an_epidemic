@@ -35,6 +35,8 @@ dependencies:
   geolocator: ^10.0.0
   permission_handler: ^11.0.1
   http: ^1.1.0
+  image_picker: ^0.8.7+1
+  shared_preferences: ^2.1.1
   
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
