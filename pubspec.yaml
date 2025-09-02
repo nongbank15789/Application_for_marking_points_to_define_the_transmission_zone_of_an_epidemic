@@ -30,6 +30,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  geocoding: ^2.2.0
   animations: ^2.0.7
   google_maps_flutter: ^2.5.0
   geolocator: ^14.0.2

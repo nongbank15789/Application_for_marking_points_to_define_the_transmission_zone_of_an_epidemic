@@ -24,6 +24,8 @@ import 'add_data_screen.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:geocoding/geocoding.dart';
+
 class MapScreen extends StatefulWidget {
   final int? userId;
 
@@ -104,6 +106,38 @@ class _MapScreenState extends State<MapScreen> {
       if (mounted) {
         setState(() => _isLoading = false);
       }
+    }
+  }
+
+  Future<void> _searchLocation(String query) async {
+    try {
+      if (query.isEmpty) return;
+
+      final locations = await locationFromAddress(query);
+      if (locations.isNotEmpty) {
+        final loc = locations.first;
+        final LatLng target = LatLng(loc.latitude, loc.longitude);
+
+        setState(() {
+          _markers.clear();
+          _markers.add(
+            Marker(
+              markerId: const MarkerId("search_location"),
+              position: target,
+              infoWindow: InfoWindow(title: query),
+            ),
+          );
+        });
+
+        if (_controller.isCompleted) {
+          final controller = await _controller.future;
+          controller.animateCamera(CameraUpdate.newLatLngZoom(target, 15));
+        }
+      } else {
+        _showSnackBar("ไม่พบสถานที่");
+      }
+    } catch (e) {
+      _showSnackBar("เกิดข้อผิดพลาด: $e");
     }
   }
 
@@ -572,48 +606,61 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Widget _buildTopBar() {
-    return Positioned(
-      top: 40,
+  TextEditingController _searchController = TextEditingController();
 
-      left: 16,
-
-      right: 16,
-
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-
-        height: 50,
-
-        decoration: BoxDecoration(
-          color: Colors.blue,
-
-          borderRadius: BorderRadius.circular(25),
-        ),
-
-        child: Row(
-          children: [
-            IconButton(
-              icon: const Icon(Icons.menu, color: Colors.white),
-
-              onPressed: () => _scaffoldKey.currentState?.openDrawer(),
-            ),
-
-            const SizedBox(width: 16),
-
-            const Expanded(
-              child: Text(
-                'Search',
-
-                style: TextStyle(color: Colors.white, fontSize: 18),
-              ),
-            ),
-
-            const Icon(Icons.search, color: Colors.white),
-          ],
-        ),
+  return Positioned(
+    top: 40,
+    left: 16,
+    right: 16,
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      height: 50,
+      decoration: BoxDecoration(
+        color: Colors.blue,
+        borderRadius: BorderRadius.circular(25),
       ),
-    );
-  }
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.menu, color: Colors.white),
+            onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+          ),
+          const SizedBox(width: 8),
+
+          // ✅ TextField แทน Text
+          Expanded(
+            child: TextField(
+              controller: _searchController,
+              style: const TextStyle(color: Colors.white),
+              cursorColor: Colors.white,
+              decoration: const InputDecoration(
+                hintText: "Search",
+                hintStyle: TextStyle(color: Colors.white70),
+                border: InputBorder.none,
+              ),
+              onSubmitted: (value) {
+                if (value.isNotEmpty) {
+                  _searchLocation(value);
+                }
+              },
+            ),
+          ),
+
+          IconButton(
+            icon: const Icon(Icons.search, color: Colors.white),
+            onPressed: () {
+              final query = _searchController.text.trim();
+              if (query.isNotEmpty) {
+                _searchLocation(query);
+              }
+            },
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
 
   Widget _buildFloatingButtons() {
     return Positioned(
