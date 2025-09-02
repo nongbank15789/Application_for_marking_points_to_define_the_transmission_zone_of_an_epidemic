@@ -6,25 +6,35 @@ import 'package:intl/intl.dart';
 import 'map_screen.dart';
 
 class AddDataScreen extends StatefulWidget {
-  const AddDataScreen({super.key});
+  final double latitude;
+  final double longitude;
+  const AddDataScreen({
+    super.key,
+    required this.latitude,
+    required this.longitude,
+  });
 
   @override
   State<AddDataScreen> createState() => _AddDataScreenState();
 }
 
 class _AddDataScreenState extends State<AddDataScreen> {
-  // Controllers สำหรับ TextField แต่ละช่อง
-  final TextEditingController _nameController = TextEditingController(text: 'ธนพล อารามแก้ว');
+  // Controllers for each TextField
+  final TextEditingController _nameController = TextEditingController(
+    text: 'ธนพล อารามแก้ว',
+  );
   final TextEditingController _diseaseController = TextEditingController();
   final TextEditingController _startDateController = TextEditingController();
   final TextEditingController _healingDateController = TextEditingController();
-  final TextEditingController _phoneNumberController = TextEditingController(text: '1234567890');
-  final TextEditingController _latitudeController = TextEditingController(text: '1234567890');
-  final TextEditingController _longitudeController = TextEditingController(text: '1234567890');
+  final TextEditingController _phoneNumberController = TextEditingController(
+    text: '1234567890',
+  );
+  final TextEditingController _latitudeController = TextEditingController();
+  final TextEditingController _longitudeController = TextEditingController();
   final TextEditingController _dangerRangeController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
 
-  // State variable สำหรับค่าที่ถูกเลือกในช่อง "ระดับความอันตราย"
+  // State variable for the selected danger level
   String? _selectedDangerLevel;
   final List<String> _dangerLevelOptions = ['น้อย', 'ปานกลาง', 'มาก'];
 
@@ -32,11 +42,19 @@ class _AddDataScreenState extends State<AddDataScreen> {
   void initState() {
     super.initState();
     _selectedDangerLevel = _dangerLevelOptions[0];
+
+    // Check if latitude and longitude are passed and set them to the controllers
+    if (widget.latitude != null) {
+      _latitudeController.text = widget.latitude!.toString();
+    }
+    if (widget.longitude != null) {
+      _longitudeController.text = widget.longitude!.toString();
+    }
   }
 
   @override
   void dispose() {
-    // Dispose controllers เมื่อ Widget ถูกทำลายเพื่อป้องกัน Memory Leak
+    // Dispose controllers to prevent memory leaks
     _nameController.dispose();
     _diseaseController.dispose();
     _startDateController.dispose();
@@ -49,8 +67,11 @@ class _AddDataScreenState extends State<AddDataScreen> {
     super.dispose();
   }
 
-  // ฟังก์ชันสำหรับเลือกวันที่จากปฏิทิน
-  Future<void> _selectDate(BuildContext context, TextEditingController controller) async {
+  // Function to select a date from the calendar
+  Future<void> _selectDate(
+    BuildContext context,
+    TextEditingController controller,
+  ) async {
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: DateTime.now(),
@@ -58,14 +79,14 @@ class _AddDataScreenState extends State<AddDataScreen> {
       lastDate: DateTime(2101),
     );
     if (picked != null) {
-      // ใช้ DateFormat เพื่อแปลง DateTime เป็น String ในรูปแบบที่ต้องการ
+      // Use DateFormat to convert DateTime to the desired String format
       controller.text = DateFormat('yyyy-MM-dd').format(picked);
     }
   }
 
-  // ฟังก์ชันสำหรับตรวจสอบความถูกต้องและบันทึกข้อมูล
+  // Function to validate and save data
   Future<void> _validateAndSave() async {
-    // ตรวจสอบข้อมูลที่จำเป็น
+    // Check required data
     if (_diseaseController.text.isEmpty) {
       _showSnackBar('กรุณาระบุ โรคที่ติด');
       return;
@@ -79,7 +100,9 @@ class _AddDataScreenState extends State<AddDataScreen> {
       return;
     }
 
-    final url = Uri.parse('http://10.0.2.2/api/add_data.php'); // เปลี่ยน URL นี้
+    final url = Uri.parse(
+      'http://10.0.2.2/api/add_data.php',
+    ); // Change this URL
 
     Map<String, dynamic> dataToSave = {
       'name': _nameController.text,
@@ -117,10 +140,109 @@ class _AddDataScreenState extends State<AddDataScreen> {
     }
   }
 
-  // ฟังก์ชันแสดง SnackBar
+  // Function to show a SnackBar
   void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  void _clearFields() {
+    _diseaseController.clear();
+    _startDateController.clear();
+    _healingDateController.clear();
+    _dangerRangeController.clear();
+    _descriptionController.clear();
+    setState(() {
+      _selectedDangerLevel = _dangerLevelOptions[0];
+    });
+  }
+
+  // Helper widget for creating a TextField with a label and a divider line
+  Widget _buildInputField({
+    required String label,
+    required TextEditingController controller,
+    IconData? suffixIcon,
+    String? suffixText,
+    List<String>? options,
+    VoidCallback? onTap,
+    ValueChanged<String>? onOptionSelected,
+    bool readOnly = false,
+    TextInputType keyboardType = TextInputType.text,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextField(
+            controller: controller,
+            readOnly: readOnly || options != null || onTap != null,
+            onTap:
+                options != null
+                    ? () async {
+                      final String? selectedOption = await showDialog<String>(
+                        context: context,
+                        builder: (BuildContext dialogContext) {
+                          return SimpleDialog(
+                            title: Text('เลือก $label'),
+                            children:
+                                options.map((String option) {
+                                  return SimpleDialogOption(
+                                    onPressed: () {
+                                      Navigator.pop(dialogContext, option);
+                                    },
+                                    child: Text(option),
+                                  );
+                                }).toList(),
+                          );
+                        },
+                      );
+                      if (selectedOption != null) {
+                        controller.text = selectedOption;
+                        onOptionSelected?.call(selectedOption);
+                      }
+                    }
+                    : onTap,
+            keyboardType: keyboardType,
+            inputFormatters:
+                keyboardType == TextInputType.numberWithOptions(decimal: true)
+                    ? [FilteringTextInputFormatter.allow(RegExp(r'[\d.-]'))]
+                    : null,
+            decoration: InputDecoration(
+              labelText: label,
+              labelStyle: TextStyle(color: Colors.blueGrey.shade700),
+              suffix: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (suffixIcon != null)
+                    Icon(suffixIcon, color: Colors.blueGrey),
+                  if (suffixIcon != null && suffixText != null)
+                    const SizedBox(width: 4),
+                  if (suffixText != null)
+                    Text(
+                      suffixText,
+                      style: const TextStyle(
+                        color: Colors.black87,
+                        fontSize: 16,
+                      ),
+                    ),
+                ],
+              ),
+              border: const UnderlineInputBorder(
+                borderSide: BorderSide(color: Colors.blueGrey),
+              ),
+              enabledBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: Colors.blueGrey.shade300),
+              ),
+              focusedBorder: const UnderlineInputBorder(
+                borderSide: BorderSide(color: Colors.blue, width: 2),
+              ),
+            ),
+            style: const TextStyle(color: Colors.black87, fontSize: 16),
+          ),
+        ],
+      ),
     );
   }
 
@@ -132,10 +254,7 @@ class _AddDataScreenState extends State<AddDataScreen> {
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [
-              Color(0xFF0077C2),
-              Color(0xFF4FC3F7),
-            ],
+            colors: [Color(0xFF0077C2), Color(0xFF4FC3F7)],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
@@ -172,9 +291,7 @@ class _AddDataScreenState extends State<AddDataScreen> {
               const SizedBox(height: 20),
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Container(
                     padding: const EdgeInsets.all(25),
                     decoration: BoxDecoration(
@@ -206,14 +323,17 @@ class _AddDataScreenState extends State<AddDataScreen> {
                           controller: _startDateController,
                           readOnly: true,
                           suffixIcon: Icons.calendar_month,
-                          onTap: () => _selectDate(context, _startDateController),
+                          onTap:
+                              () => _selectDate(context, _startDateController),
                         ),
                         _buildInputField(
                           label: 'วันที่หาย',
                           controller: _healingDateController,
                           readOnly: true,
                           suffixIcon: Icons.calendar_month,
-                          onTap: () => _selectDate(context, _healingDateController),
+                          onTap:
+                              () =>
+                                  _selectDate(context, _healingDateController),
                         ),
                         _buildInputField(
                           label: 'เบอร์',
@@ -221,10 +341,12 @@ class _AddDataScreenState extends State<AddDataScreen> {
                         ),
                         _buildInputField(
                           label: 'ระดับความอันตราย',
-                          controller: TextEditingController(text: _selectedDangerLevel),
-                          readOnly: true, // ทำให้เป็นแบบอ่านอย่างเดียว
+                          controller: TextEditingController(
+                            text: _selectedDangerLevel,
+                          ),
+                          readOnly: true,
                           suffixIcon: Icons.format_list_bulleted,
-                          options: _dangerLevelOptions, // ส่งตัวเลือกไป
+                          options: _dangerLevelOptions,
                           onOptionSelected: (newValue) {
                             setState(() {
                               _selectedDangerLevel = newValue;
@@ -241,12 +363,18 @@ class _AddDataScreenState extends State<AddDataScreen> {
                                   _buildInputField(
                                     label: 'ละติจูด',
                                     controller: _latitudeController,
-                                    keyboardType: TextInputType.numberWithOptions(decimal: true),
+                                    keyboardType:
+                                        TextInputType.numberWithOptions(
+                                          decimal: true,
+                                        ),
                                   ),
                                   _buildInputField(
                                     label: 'ลองจิจูด',
                                     controller: _longitudeController,
-                                    keyboardType: TextInputType.numberWithOptions(decimal: true),
+                                    keyboardType:
+                                        TextInputType.numberWithOptions(
+                                          decimal: true,
+                                        ),
                                   ),
                                 ],
                               ),
@@ -262,7 +390,9 @@ class _AddDataScreenState extends State<AddDataScreen> {
                                     size: 70,
                                   ),
                                   onPressed: () {
-                                    // TODO: Implement get location action
+                                    // Logic to get location can be here, but for this case,
+                                    // the location is passed directly from MapScreen.
+                                    // This button is not used to get the location in this flow.
                                   },
                                 ),
                               ),
@@ -347,104 +477,6 @@ class _AddDataScreenState extends State<AddDataScreen> {
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  void _clearFields() {
-    _diseaseController.clear();
-    _startDateController.clear();
-    _healingDateController.clear();
-    _dangerRangeController.clear();
-    _descriptionController.clear();
-    setState(() {
-      _selectedDangerLevel = _dangerLevelOptions[0];
-    });
-  }
-
-  // Helper widget สำหรับสร้าง TextField พร้อม Label และเส้นแบ่ง
-  Widget _buildInputField({
-    required String label,
-    required TextEditingController controller,
-    IconData? suffixIcon,
-    String? suffixText,
-    List<String>? options,
-    VoidCallback? onTap,
-    ValueChanged<String>? onOptionSelected,
-    bool readOnly = false,
-    TextInputType keyboardType = TextInputType.text,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          TextField(
-            controller: controller,
-            readOnly: readOnly || options != null || onTap != null,
-            onTap: options != null
-                ? () async {
-                    final String? selectedOption = await showDialog<String>(
-                      context: context,
-                      builder: (BuildContext dialogContext) {
-                        return SimpleDialog(
-                          title: Text('เลือก $label'),
-                          children: options.map((String option) {
-                            return SimpleDialogOption(
-                              onPressed: () {
-                                Navigator.pop(dialogContext, option);
-                              },
-                              child: Text(option),
-                            );
-                          }).toList(),
-                        );
-                      },
-                    );
-                    if (selectedOption != null) {
-                      controller.text = selectedOption;
-                      onOptionSelected?.call(selectedOption);
-                    }
-                  }
-                : onTap,
-            keyboardType: keyboardType,
-            inputFormatters: keyboardType == TextInputType.numberWithOptions(decimal: true)
-                ? [
-                    FilteringTextInputFormatter.allow(RegExp(r'[\d.-]')),
-                  ]
-                : null,
-            decoration: InputDecoration(
-              labelText: label,
-              labelStyle: TextStyle(color: Colors.blueGrey.shade700),
-              suffix: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (suffixIcon != null)
-                    Icon(suffixIcon, color: Colors.blueGrey),
-                  if (suffixIcon != null && suffixText != null)
-                    const SizedBox(width: 4),
-                  if (suffixText != null)
-                    Text(
-                      suffixText,
-                      style: const TextStyle(
-                        color: Colors.black87,
-                        fontSize: 16,
-                      ),
-                    ),
-                ],
-              ),
-              border: const UnderlineInputBorder(
-                borderSide: BorderSide(color: Colors.blueGrey),
-              ),
-              enabledBorder: UnderlineInputBorder(
-                borderSide: BorderSide(color: Colors.blueGrey.shade300),
-              ),
-              focusedBorder: const UnderlineInputBorder(
-                borderSide: BorderSide(color: Colors.blue, width: 2),
-              ),
-            ),
-            style: const TextStyle(color: Colors.black87, fontSize: 16),
-          ),
-        ],
       ),
     );
   }
