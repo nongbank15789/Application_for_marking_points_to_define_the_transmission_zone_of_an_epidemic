@@ -319,7 +319,7 @@ class _MapScreenState extends State<MapScreen> {
       body: Stack(
         children: [
           GoogleMap(
-            myLocationEnabled: true,
+            myLocationEnabled: false,
             initialCameraPosition: CameraPosition(target: _center!, zoom: 15),
             markers: _markers,
             compassEnabled: false,
@@ -636,14 +636,6 @@ class _MapScreenState extends State<MapScreen> {
               }
             },
             child: const Icon(Icons.center_focus_strong),
-          ),
-          const SizedBox(height: 8),
-          FloatingActionButton(
-            mini: true,
-            onPressed: () {
-              // TODO: เพิ่มฟังก์ชันสำหรับปุ่ม Pin Location (ถ้ามี)
-            },
-            child: const Icon(Icons.location_pin),
           ),
           const SizedBox(height: 8),
           // ปุ่มเข็มทิศ
