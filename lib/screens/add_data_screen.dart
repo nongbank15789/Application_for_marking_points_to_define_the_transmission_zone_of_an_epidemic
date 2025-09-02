@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart'; // เพิ่ม import นี้เพื่อใช้คลาส DateFormat
+import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:intl/intl.dart';
 import 'map_screen.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AddDataScreen extends StatefulWidget {
   const AddDataScreen({super.key});
@@ -15,7 +17,7 @@ class _AddDataScreenState extends State<AddDataScreen> {
   final TextEditingController _nameController = TextEditingController(text: 'ธนพล อารามแก้ว');
   final TextEditingController _diseaseController = TextEditingController();
   final TextEditingController _startDateController = TextEditingController();
-  final TextEditingController _healingDateController = TextEditingController(); // เพิ่ม Controller สำหรับวันที่หาย
+  final TextEditingController _healingDateController = TextEditingController();
   final TextEditingController _phoneNumberController = TextEditingController(text: '1234567890');
   final TextEditingController _latitudeController = TextEditingController(text: '1234567890');
   final TextEditingController _longitudeController = TextEditingController(text: '1234567890');
@@ -57,8 +59,69 @@ class _AddDataScreenState extends State<AddDataScreen> {
     );
     if (picked != null) {
       // ใช้ DateFormat เพื่อแปลง DateTime เป็น String ในรูปแบบที่ต้องการ
-      controller.text = DateFormat('dd/MM/yyyy').format(picked);
+      controller.text = DateFormat('yyyy-MM-dd').format(picked);
     }
+  }
+
+  // ฟังก์ชันสำหรับตรวจสอบความถูกต้องและบันทึกข้อมูล
+  Future<void> _validateAndSave() async {
+    // ตรวจสอบข้อมูลที่จำเป็น
+    if (_diseaseController.text.isEmpty) {
+      _showSnackBar('กรุณาระบุ โรคที่ติด');
+      return;
+    }
+    if (_startDateController.text.isEmpty) {
+      _showSnackBar('กรุณาระบุ วันที่ติด');
+      return;
+    }
+    if (_latitudeController.text.isEmpty || _longitudeController.text.isEmpty) {
+      _showSnackBar('กรุณาระบุพิกัด ละติจูด และ ลองจิจูด');
+      return;
+    }
+
+    final url = Uri.parse('http://10.0.2.2/api/add_data.php'); // เปลี่ยน URL นี้
+
+    Map<String, dynamic> dataToSave = {
+      'name': _nameController.text,
+      'disease': _diseaseController.text,
+      'startDate': _startDateController.text,
+      'healingDate': _healingDateController.text,
+      'phoneNumber': _phoneNumberController.text,
+      'dangerLevel': _selectedDangerLevel ?? 'ไม่ได้เลือก',
+      'latitude': double.tryParse(_latitudeController.text) ?? 0.0,
+      'longitude': double.tryParse(_longitudeController.text) ?? 0.0,
+      'dangerRange': double.tryParse(_dangerRangeController.text) ?? 0.0,
+      'description': _descriptionController.text,
+    };
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(dataToSave),
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        if (responseData['success'] == true) {
+          _showSnackBar('บันทึกข้อมูลสำเร็จ!');
+          _clearFields();
+        } else {
+          _showSnackBar('บันทึกข้อมูลล้มเหลว: ${responseData['message']}');
+        }
+      } else {
+        _showSnackBar('Server Error: ${response.statusCode}');
+      }
+    } catch (e) {
+      _showSnackBar('เกิดข้อผิดพลาดในการเชื่อมต่อ: $e');
+    }
+  }
+
+  // ฟังก์ชันแสดง SnackBar
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   @override
@@ -141,12 +204,12 @@ class _AddDataScreenState extends State<AddDataScreen> {
                         _buildInputField(
                           label: 'วันที่ติด',
                           controller: _startDateController,
-                          readOnly: true, // ทำให้กดไม่ได้แต่เลือกจากปฏิทินได้
+                          readOnly: true,
                           suffixIcon: Icons.calendar_month,
                           onTap: () => _selectDate(context, _startDateController),
                         ),
                         _buildInputField(
-                          label: 'วันที่หาย', // เพิ่มช่องวันที่หาย
+                          label: 'วันที่หาย',
                           controller: _healingDateController,
                           readOnly: true,
                           suffixIcon: Icons.calendar_month,
@@ -159,9 +222,9 @@ class _AddDataScreenState extends State<AddDataScreen> {
                         _buildInputField(
                           label: 'ระดับความอันตราย',
                           controller: TextEditingController(text: _selectedDangerLevel),
-                          readOnly: true,
+                          readOnly: true, // ทำให้เป็นแบบอ่านอย่างเดียว
                           suffixIcon: Icons.format_list_bulleted,
-                          options: _dangerLevelOptions,
+                          options: _dangerLevelOptions, // ส่งตัวเลือกไป
                           onOptionSelected: (newValue) {
                             setState(() {
                               _selectedDangerLevel = newValue;
@@ -178,10 +241,12 @@ class _AddDataScreenState extends State<AddDataScreen> {
                                   _buildInputField(
                                     label: 'ละติจูด',
                                     controller: _latitudeController,
+                                    keyboardType: TextInputType.numberWithOptions(decimal: true),
                                   ),
                                   _buildInputField(
                                     label: 'ลองจิจูด',
                                     controller: _longitudeController,
+                                    keyboardType: TextInputType.numberWithOptions(decimal: true),
                                   ),
                                 ],
                               ),
@@ -241,55 +306,7 @@ class _AddDataScreenState extends State<AddDataScreen> {
               ),
               const SizedBox(height: 30),
               ElevatedButton(
-                onPressed: () async {
-                  String name = _nameController.text;
-                  String disease = _diseaseController.text;
-                  String startDate = _startDateController.text;
-                  String healingDate = _healingDateController.text; // ดึงค่าวันที่หาย
-                  String phoneNumber = _phoneNumberController.text;
-                  String dangerLevel = _selectedDangerLevel ?? 'ไม่ได้เลือก';
-                  double latitude = double.tryParse(_latitudeController.text) ?? 0.0;
-                  double longitude = double.tryParse(_longitudeController.text) ?? 0.0;
-                  double dangerRange = double.tryParse(_dangerRangeController.text) ?? 0.0;
-                  String description = _descriptionController.text;
-
-                  Map<String, dynamic> dataToSave = {
-                    'name': name,
-                    'disease': disease,
-                    'startDate': startDate,
-                    'healingDate': healingDate, // เพิ่มวันที่หายใน Map
-                    'phoneNumber': phoneNumber,
-                    'dangerLevel': dangerLevel,
-                    'latitude': latitude,
-                    'longitude': longitude,
-                    'dangerRange': dangerRange,
-                    'description': description,
-                    'timestamp': FieldValue.serverTimestamp(),
-                  };
-
-                  try {
-                    CollectionReference infectedPlaces = FirebaseFirestore.instance.collection('infected_places');
-                    await infectedPlaces.add(dataToSave);
-
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('บันทึกข้อมูลสำเร็จ!')),
-                    );
-
-                    _diseaseController.clear();
-                    _startDateController.clear();
-                    _healingDateController.clear();
-                    _dangerRangeController.clear();
-                    _descriptionController.clear();
-
-                    setState(() {
-                      _selectedDangerLevel = _dangerLevelOptions[0];
-                    });
-                  } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('เกิดข้อผิดพลาดในการบันทึก: $e')),
-                    );
-                  }
-                },
+                onPressed: _validateAndSave,
                 style: ElevatedButton.styleFrom(
                   minimumSize: Size(size.width * 0.6, 50),
                   padding: const EdgeInsets.symmetric(
@@ -334,6 +351,17 @@ class _AddDataScreenState extends State<AddDataScreen> {
     );
   }
 
+  void _clearFields() {
+    _diseaseController.clear();
+    _startDateController.clear();
+    _healingDateController.clear();
+    _dangerRangeController.clear();
+    _descriptionController.clear();
+    setState(() {
+      _selectedDangerLevel = _dangerLevelOptions[0];
+    });
+  }
+
   // Helper widget สำหรับสร้าง TextField พร้อม Label และเส้นแบ่ง
   Widget _buildInputField({
     required String label,
@@ -341,9 +369,10 @@ class _AddDataScreenState extends State<AddDataScreen> {
     IconData? suffixIcon,
     String? suffixText,
     List<String>? options,
-    VoidCallback? onTap, // เพิ่ม onTap
+    VoidCallback? onTap,
     ValueChanged<String>? onOptionSelected,
     bool readOnly = false,
+    TextInputType keyboardType = TextInputType.text,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -352,8 +381,37 @@ class _AddDataScreenState extends State<AddDataScreen> {
         children: [
           TextField(
             controller: controller,
-            readOnly: readOnly || options != null, // ถ้าเป็นช่องสำหรับเลือก, ควรอ่านได้อย่างเดียว
-            onTap: onTap, // ผูก onTap กับ TextField
+            readOnly: readOnly || options != null || onTap != null,
+            onTap: options != null
+                ? () async {
+                    final String? selectedOption = await showDialog<String>(
+                      context: context,
+                      builder: (BuildContext dialogContext) {
+                        return SimpleDialog(
+                          title: Text('เลือก $label'),
+                          children: options.map((String option) {
+                            return SimpleDialogOption(
+                              onPressed: () {
+                                Navigator.pop(dialogContext, option);
+                              },
+                              child: Text(option),
+                            );
+                          }).toList(),
+                        );
+                      },
+                    );
+                    if (selectedOption != null) {
+                      controller.text = selectedOption;
+                      onOptionSelected?.call(selectedOption);
+                    }
+                  }
+                : onTap,
+            keyboardType: keyboardType,
+            inputFormatters: keyboardType == TextInputType.numberWithOptions(decimal: true)
+                ? [
+                    FilteringTextInputFormatter.allow(RegExp(r'[\d.-]')),
+                  ]
+                : null,
             decoration: InputDecoration(
               labelText: label,
               labelStyle: TextStyle(color: Colors.blueGrey.shade700),
