@@ -62,7 +62,7 @@ class _FilterScreenState extends State<FilterScreen> {
                 ),
                 centerTitle: true,
                 title: const Text(
-                  'ตัวกรอง',
+                  'ตัวกรองแผนที่',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 28,

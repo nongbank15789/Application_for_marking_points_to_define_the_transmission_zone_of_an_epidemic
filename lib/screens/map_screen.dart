@@ -209,7 +209,6 @@ class _MapScreenState extends State<MapScreen> {
         setState(() {
           _center = LatLng(pos.latitude, pos.longitude);
 
-          _addDefaultMarker(_center!);
         });
       }
 
@@ -539,7 +538,7 @@ class _MapScreenState extends State<MapScreen> {
             DrawerListItem(
               icon: Icons.filter_list,
 
-              title: 'ตัวกรอง',
+              title: 'ตัวกรองแผนที่',
 
               onTap: () {
                 Navigator.pop(context);
@@ -555,7 +554,7 @@ class _MapScreenState extends State<MapScreen> {
             DrawerListItem(
               icon: Icons.history,
 
-              title: 'ประวัติ',
+              title: 'ประวัติผู้ป่วย',
 
               onTap: () {
                 Navigator.pop(context);
@@ -572,7 +571,7 @@ class _MapScreenState extends State<MapScreen> {
 
             DrawerListItem(
               icon: Icons.add_box,
-              title: 'เพิ่มข้อมูล',
+              title: 'เพิ่มข้อมูลผู้ป่วย',
               onTap: () {
                 // ตรวจสอบว่ามี Marker ล่าสุดหรือไม่
                 if (_lastMarkerLat != null && _lastMarkerLng != null) {

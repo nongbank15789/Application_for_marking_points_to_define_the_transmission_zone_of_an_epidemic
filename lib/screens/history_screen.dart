@@ -151,7 +151,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 ),
                 centerTitle: true,
                 title: const Text(
-                  'ประวัติ',
+                  'ประวัติผู้ป่วย',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 28,

@@ -280,7 +280,7 @@ class _AddDataScreenState extends State<AddDataScreen> {
                 ),
                 centerTitle: true,
                 title: const Text(
-                  'เพิ่มข้อมูล',
+                  'เพิ่มข้อมูลผู้ป่วย',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 28,
