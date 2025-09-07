@@ -20,13 +20,11 @@ class AddDataScreen extends StatefulWidget {
 
 class _AddDataScreenState extends State<AddDataScreen> {
   // Controllers for each TextField
-  final TextEditingController _nameController = TextEditingController(
-  );
+  final TextEditingController _nameController = TextEditingController();
   final TextEditingController _diseaseController = TextEditingController();
   final TextEditingController _startDateController = TextEditingController();
   final TextEditingController _healingDateController = TextEditingController();
-  final TextEditingController _phoneNumberController = TextEditingController(
-  );
+  final TextEditingController _phoneNumberController = TextEditingController();
   final TextEditingController _latitudeController = TextEditingController();
   final TextEditingController _longitudeController = TextEditingController();
   final TextEditingController _dangerRangeController = TextEditingController();
@@ -35,6 +33,11 @@ class _AddDataScreenState extends State<AddDataScreen> {
   // State variable for the selected danger level
   String? _selectedDangerLevel;
   final List<String> _dangerLevelOptions = ['น้อย', 'ปานกลาง', 'มาก'];
+  final List<String> _diseaseOptions = [
+    'ไข้เลือดออก',
+    'covid-19',
+    'ไข้หวัดใหญ่',
+  ];
 
   @override
   void initState() {
@@ -44,7 +47,7 @@ class _AddDataScreenState extends State<AddDataScreen> {
     // Check if latitude and longitude are passed and set them to the controllers
     _latitudeController.text = widget.latitude.toString();
     _longitudeController.text = widget.longitude.toString();
-    }
+  }
 
   @override
   void dispose() {
@@ -122,7 +125,13 @@ class _AddDataScreenState extends State<AddDataScreen> {
         final responseData = jsonDecode(response.body);
         if (responseData['success'] == true) {
           _showSnackBar('บันทึกข้อมูลสำเร็จ!');
+
+          // เคลียร์ข้อมูลในฟอร์ม
           _clearFields();
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const MapScreen()),
+          );
         } else {
           _showSnackBar('บันทึกข้อมูลล้มเหลว: ${responseData['message']}');
         }
@@ -311,6 +320,12 @@ class _AddDataScreenState extends State<AddDataScreen> {
                           label: 'โรคที่ติด',
                           controller: _diseaseController,
                           suffixIcon: Icons.format_list_bulleted,
+                          options: _diseaseOptions,
+                          onOptionSelected: (newValue) {
+                            setState(() {
+                              _diseaseController.text = newValue;
+                            });
+                          },
                         ),
                         _buildInputField(
                           label: 'วันที่ติด',

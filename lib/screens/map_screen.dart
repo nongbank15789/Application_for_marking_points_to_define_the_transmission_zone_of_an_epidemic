@@ -388,7 +388,6 @@ class _MapScreenState extends State<MapScreen> {
       _showSnackBar('Location services are disabled. Please enable them.');
       if (mounted && _center == null) {
         setState(() {
-          _center = const LatLng(18.7883, 98.9853);
           _addDefaultMarker(_center!);
         });
       }
@@ -403,7 +402,6 @@ class _MapScreenState extends State<MapScreen> {
         );
         if (mounted && _center == null) {
           setState(() {
-            _center = const LatLng(18.7883, 98.9853);
             _addDefaultMarker(_center!);
           });
         }
@@ -416,7 +414,6 @@ class _MapScreenState extends State<MapScreen> {
       );
       if (mounted && _center == null) {
         setState(() {
-          _center = const LatLng(18.7883, 98.9853);
           _addDefaultMarker(_center!);
         });
       }
@@ -440,7 +437,6 @@ class _MapScreenState extends State<MapScreen> {
       _showSnackBar('Failed to get your current location.');
       if (mounted && _center == null) {
         setState(() {
-          _center = const LatLng(18.7883, 98.9853);
           _addDefaultMarker(_center!);
         });
       }
