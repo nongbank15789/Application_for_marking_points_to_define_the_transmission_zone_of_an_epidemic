@@ -34,17 +34,17 @@ class HistoryRecord {
 
   factory HistoryRecord.fromJson(Map<String, dynamic> json) {
     return HistoryRecord(
-      id: int.tryParse(json['id'].toString()),
-      name: json['name'],
-      disease: json['disease'],
-      startDate: json['startDate'],
-      endDate: json['endDate'],
-      phoneNumber: json['phoneNumber'],
-      dangerLevel: json['dangerLevel'],
-      description: json['description'],
-      dangerRange: json['danger_range'],
-      latitude: json['latitude'],
-      longitude: json['longitude'],
+      id: int.tryParse(json['pat_id'].toString()),
+      name: json['pat_name'],
+      disease: json['pat_epidemic'],
+      startDate: json['pat_infection_date'],
+      endDate: json['pat_recovery_date'],
+      phoneNumber: json['pat_phone'],
+      dangerLevel: json['pat_danger_level'],
+      description: json['pat_description'],
+      dangerRange: json['pat_danger_range'],
+      latitude: json['pat_latitude'],
+      longitude: json['pat_longitude'],
     );
   }
 }
@@ -488,15 +488,15 @@ class _EditHistoryRecordDialogState extends State<EditHistoryRecordDialog> {
         uri,
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'id': widget.record.id,
-          'name': _nameController.text,
-          'disease': _diseaseController.text,
-          'infected_date': _startDateController.text,
-          'healing_date': _endDateController.text,
-          'phone_number': _phoneNumberController.text,
-          'danger_level': _selectedDangerLevel,
-          'description': _descriptionController.text,
-          'danger_range': _dangerRangeController.text,
+          'pat_id': widget.record.id,
+          'pat_name': _nameController.text,
+          'pat_epidemic': _diseaseController.text,
+          'pat_infection_date': _startDateController.text,
+          'pat_recovery_date': _endDateController.text,
+          'pat_phone': _phoneNumberController.text,
+          'pat_danger_level': _selectedDangerLevel,
+          'pat_description': _descriptionController.text,
+          'pat_danger_range': _dangerRangeController.text,
         }),
       );
 
@@ -824,7 +824,7 @@ class _EditHistoryRecordDialogState extends State<EditHistoryRecordDialog> {
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: Color(0xFF0077C2), width: 2),
         ),
-        suffixText: 'm.',
+        suffixText: 'เมตร',
         suffixStyle: TextStyle(color: Colors.blueGrey[700]),
       ),
     );

@@ -21,13 +21,11 @@ class AddDataScreen extends StatefulWidget {
 class _AddDataScreenState extends State<AddDataScreen> {
   // Controllers for each TextField
   final TextEditingController _nameController = TextEditingController(
-    text: 'ธนพล อารามแก้ว',
   );
   final TextEditingController _diseaseController = TextEditingController();
   final TextEditingController _startDateController = TextEditingController();
   final TextEditingController _healingDateController = TextEditingController();
   final TextEditingController _phoneNumberController = TextEditingController(
-    text: '1234567890',
   );
   final TextEditingController _latitudeController = TextEditingController();
   final TextEditingController _longitudeController = TextEditingController();
@@ -44,13 +42,9 @@ class _AddDataScreenState extends State<AddDataScreen> {
     _selectedDangerLevel = _dangerLevelOptions[0];
 
     // Check if latitude and longitude are passed and set them to the controllers
-    if (widget.latitude != null) {
-      _latitudeController.text = widget.latitude!.toString();
+    _latitudeController.text = widget.latitude.toString();
+    _longitudeController.text = widget.longitude.toString();
     }
-    if (widget.longitude != null) {
-      _longitudeController.text = widget.longitude!.toString();
-    }
-  }
 
   @override
   void dispose() {
@@ -105,16 +99,16 @@ class _AddDataScreenState extends State<AddDataScreen> {
     ); // Change this URL
 
     Map<String, dynamic> dataToSave = {
-      'name': _nameController.text,
-      'disease': _diseaseController.text,
-      'startDate': _startDateController.text,
-      'healingDate': _healingDateController.text,
-      'phoneNumber': _phoneNumberController.text,
-      'dangerLevel': _selectedDangerLevel ?? 'ไม่ได้เลือก',
-      'latitude': double.tryParse(_latitudeController.text) ?? 0.0,
-      'longitude': double.tryParse(_longitudeController.text) ?? 0.0,
-      'dangerRange': double.tryParse(_dangerRangeController.text) ?? 0.0,
-      'description': _descriptionController.text,
+      'pat_name': _nameController.text,
+      'pat_epidemic': _diseaseController.text,
+      'pat_infection_date': _startDateController.text,
+      'pat_recovery_date': _healingDateController.text,
+      'pat_phone': _phoneNumberController.text,
+      'pat_danger_level': _selectedDangerLevel ?? 'ไม่ได้เลือก',
+      'pat_latitude': double.tryParse(_latitudeController.text) ?? 0.0,
+      'pat_longitude': double.tryParse(_longitudeController.text) ?? 0.0,
+      'pat_danger_range': double.tryParse(_dangerRangeController.text) ?? 0.0,
+      'pat_description': _descriptionController.text,
     };
 
     try {
@@ -402,7 +396,7 @@ class _AddDataScreenState extends State<AddDataScreen> {
                         _buildInputField(
                           label: 'ระยะอันตราย',
                           controller: _dangerRangeController,
-                          suffixText: 'm.',
+                          suffixText: 'เมตร',
                         ),
                         const SizedBox(height: 15),
                         TextField(

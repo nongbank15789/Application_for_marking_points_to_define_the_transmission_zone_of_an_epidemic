@@ -34,9 +34,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       'POST',
       Uri.parse("http://10.0.2.2/api/upload_avatar.php"),
     );
-    request.fields['user_id'] = widget.userId.toString(); // ส่ง userId ไปด้วย
+    request.fields['stf_id'] = widget.userId.toString(); // ส่ง userId ไปด้วย
     request.files.add(
-      await http.MultipartFile.fromPath('avatar', _avatarFile!.path),
+      await http.MultipartFile.fromPath('stf_avatar', _avatarFile!.path),
     );
 
     var response = await request.send();
@@ -47,7 +47,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       if (data['success'] == true) {
         setState(() {
-          userData!['avatar'] = data['avatar']; // อัปเดต path ใน state
+          userData!['stf_avatar'] = data['stf_avatar']; // อัปเดต path ใน state
         });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("✅ อัปโหลดรูปโปรไฟล์สำเร็จ")),
@@ -82,7 +82,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> fetchUser(int id) async {
     try {
       final response = await http.get(
-        Uri.parse("http://10.0.2.2/api/get_user.php?id=$id"),
+        Uri.parse("http://10.0.2.2/api/get_user.php?stf_id=$id"),
       );
 
       if (response.statusCode == 200) {
@@ -188,15 +188,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             backgroundImage:
                                 _avatarFile != null
                                     ? FileImage(_avatarFile!)
-                                    : (userData!['avatar'] != null
+                                    : (userData!['stf_avatar'] != null
                                             ? NetworkImage(
-                                              "http://10.0.2.2/api/${userData!['avatar']}",
+                                              "http://10.0.2.2/api/${userData!['stf_avatar']}",
                                             )
                                             : null)
                                         as ImageProvider?,
                             child:
                                 (_avatarFile == null &&
-                                        userData!['avatar'] == null)
+                                        userData!['stf_avatar'] == null)
                                     ? const Icon(
                                       Icons.person,
                                       size: 70,
@@ -249,7 +249,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           children: [
                             _buildInfoField(
                               "ชื่อ",
-                              "${userData!['f_name']} ${userData!['l_name']}",
+                              "${userData!['stf_fname']} ${userData!['stf_lname']}",
                             ),
                             _buildInfoField(
                               "บทบาท",
@@ -257,12 +257,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                             _buildInfoField(
                               "Username",
-                              userData!['username'] ?? "-",
+                              userData!['stf_username'] ?? "-",
                             ),
-                            _buildInfoField("Email", userData!['email'] ?? "-"),
+                            _buildInfoField("Email", userData!['stf_email'] ?? "-"),
                             _buildInfoField(
                               "รหัสผ่าน",
-                              userData!['password'] ?? "-",
+                              userData!['stf_password'] ?? "-",
                               obscureText: true,
                             ),
                           ],
