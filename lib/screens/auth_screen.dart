@@ -52,9 +52,9 @@ class _AuthScreenState extends State<AuthScreen> {
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
-        final userId = responseData['user_id']; // รับ user_id จาก PHP
+        final userId = responseData['stf_id']; // รับ user_id จาก PHP
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setInt('userId', responseData['user_id']);
+        await prefs.setInt('userId', responseData['stf_id']);
 
         if (mounted) {
           ScaffoldMessenger.of(
