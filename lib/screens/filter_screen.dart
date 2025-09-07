@@ -10,26 +10,23 @@ class FilterScreen extends StatefulWidget {
 
 class _FilterScreenState extends State<FilterScreen> {
   // State variables เพื่อเก็บค่าที่ถูกเลือกในแต่ละหมวดหมู่
-  String? _selectedDateFilter; // null ถ้ายังไม่ได้เลือก
-  String? _selectedTypeFilter;
+  String? _selectedInfectionFilter;
+  String? _selectedRecoveryFilter;
+  String? _selectedDiseaseFilter;
   String? _selectedDangerFilter;
-  String? _selectedSortByFilter;
 
   // รายการตัวเลือกสำหรับแต่ละหมวดหมู่
   final List<String> _dateOptions = ['วันนี้', 'สัปดาห์นี้', 'เดือนนี้', 'ปีนี้', 'ทั้งหมด']; 
-  final List<String> _typeOptions = ['ไข้เลือดออก', 'ไข้หวัดใหญ่', 'covid-19', 'ทั้งหมด']; 
+  final List<String> _diseaseOptions = ['ไข้เลือดออก', 'ไข้หวัดใหญ่', 'covid-19', 'ทั้งหมด']; 
   final List<String> _dangerOptions = ['น้อย', 'ปานกลาง', 'มาก', 'ทั้งหมด']; 
-  final List<String> _sortByOptions = ['วันที่', 'ประเภท', 'ความอันตราย']; 
 
   @override
   void initState() {
     super.initState();
-    // แก้ไขตรงนี้: กำหนดค่าเริ่มต้นเป็น 'ทั้งหมด' สำหรับ 3 หมวดหมู่แรก
-    _selectedDateFilter = 'ทั้งหมด';
-    _selectedTypeFilter = 'ทั้งหมด';
+    _selectedInfectionFilter = 'ทั้งหมด';
+    _selectedRecoveryFilter = 'ทั้งหมด';
+    _selectedDiseaseFilter = 'ทั้งหมด';
     _selectedDangerFilter = 'ทั้งหมด';
-    // สำหรับ 'เรียงตาม' ให้ยังคงเริ่มต้นเป็น 'วันที่' เหมือนเดิม
-    _selectedSortByFilter = _sortByOptions.contains('วันที่') ? 'วันที่' : _sortByOptions[0]; 
   }
 
   @override
@@ -54,10 +51,7 @@ class _FilterScreenState extends State<FilterScreen> {
                 leading: IconButton(
                   icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 24),
                   onPressed: () {
-                    Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (_) => const MapScreen()),
-                      );
+                    Navigator.pop(context);
                   },
                 ),
                 centerTitle: true,
@@ -73,7 +67,7 @@ class _FilterScreenState extends State<FilterScreen> {
               const SizedBox(height: 30),
 
               // กล่อง Filter Card
-              Expanded( // ใช้ Expanded เพื่อให้ Card ขยายตัวเต็มพื้นที่ที่เหลือและสามารถ Scroll ได้ภายใน
+              Expanded(
                 child: SingleChildScrollView(
                   child: Container(
                     width: size.width * 0.9,
@@ -90,26 +84,36 @@ class _FilterScreenState extends State<FilterScreen> {
                         ),
                       ],
                     ),
-                    child: Row( // Row สำหรับจัดเรียง 4 คอลัมน์
-                      crossAxisAlignment: CrossAxisAlignment.start, // จัดให้อยู่ด้านบน
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _buildFilterCategory(
-                          title: 'วันที่',
+                          title: 'ติดเชื้อภายใน',
                           options: _dateOptions,
-                          selectedValue: _selectedDateFilter,
+                          selectedValue: _selectedInfectionFilter,
                           onSelected: (value) {
                             setState(() {
-                              _selectedDateFilter = value;
+                              _selectedInfectionFilter = value;
                             });
                           },
                         ),
                         _buildFilterCategory(
-                          title: 'ประเภท',
-                          options: _typeOptions,
-                          selectedValue: _selectedTypeFilter,
+                          title: 'หายจากโรคภายใน',
+                          options: _dateOptions,
+                          selectedValue: _selectedRecoveryFilter,
                           onSelected: (value) {
                             setState(() {
-                              _selectedTypeFilter = value;
+                              _selectedRecoveryFilter = value;
+                            });
+                          },
+                        ),
+                        _buildFilterCategory(
+                          title: 'โรคที่ติด',
+                          options: _diseaseOptions,
+                          selectedValue: _selectedDiseaseFilter,
+                          onSelected: (value) {
+                            setState(() {
+                              _selectedDiseaseFilter = value;
                             });
                           },
                         ),
@@ -123,34 +127,23 @@ class _FilterScreenState extends State<FilterScreen> {
                             });
                           },
                         ),
-                        _buildFilterCategory(
-                          title: 'เรียงตาม',
-                          options: _sortByOptions,
-                          selectedValue: _selectedSortByFilter,
-                          onSelected: (value) {
-                            setState(() {
-                              _selectedSortByFilter = value;
-                            });
-                          },
-                        ),
                       ],
                     ),
                   ),
                 ),
               ),
-              const SizedBox(height: 30), // ระยะห่างจาก Card
+              const SizedBox(height: 30),
 
               // ปุ่มยืนยัน
               ElevatedButton(
                 onPressed: () {
-                  String message = 'ตัวกรองที่เลือก:\n'
-                      'วันที่: ${_selectedDateFilter ?? "ไม่ได้เลือก"}\n'
-                      'ประเภท: ${_selectedTypeFilter ?? "ไม่ได้เลือก"}\n'
-                      'ความอันตราย: ${_selectedDangerFilter ?? "ไม่ได้เลือก"}\n'
-                      'เรียงตาม: ${_selectedSortByFilter ?? "ไม่ได้เลือก"}';
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(message)),
-                  );
+                  final selectedFilters = {
+                    'infectedDate': _selectedInfectionFilter,
+                    'recoveryDate': _selectedRecoveryFilter,
+                    'disease': _selectedDiseaseFilter,
+                    'danger': _selectedDangerFilter,
+                  };
+                  Navigator.pop(context, selectedFilters);
                 },
                 style: ElevatedButton.styleFrom(
                   minimumSize: Size(size.width * 0.5, 50),
@@ -176,7 +169,7 @@ class _FilterScreenState extends State<FilterScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 20), // ระยะห่างด้านล่าง
+              const SizedBox(height: 20),
             ],
           ),
         ),
@@ -184,7 +177,6 @@ class _FilterScreenState extends State<FilterScreen> {
     );
   }
 
-  // Helper widget สำหรับสร้างหมวดหมู่ตัวกรองแต่ละคอลัมน์ (เช่น 'วันที่')
   Widget _buildFilterCategory({
     required String title,
     required List<String> options,
@@ -194,12 +186,11 @@ class _FilterScreenState extends State<FilterScreen> {
     return Expanded(
       child: Column(
         children: [
-          // ส่วนหัวของหมวดหมู่ (พร้อมเส้นใต้)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8.0),
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.center, // จัดให้ข้อความและเส้นใต้ตรงกลาง
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Text(
                   title,
@@ -213,31 +204,29 @@ class _FilterScreenState extends State<FilterScreen> {
                 const SizedBox(height: 4),
                 Container(
                   height: 2,
-                  width: 50, // ความยาวของเส้นใต้
+                  width: 50,
                   color: const Color(0xFF0077C2),
                 ),
               ],
             ),
           ),
-          const Divider(height: 1, thickness: 1, color: Color(0xFFB2EBF2)), // เส้นแบ่งใต้หัวข้อ
-
-          // รายการตัวเลือก
+          const Divider(height: 1, thickness: 1, color: Color(0xFFB2EBF2)),
           ...options.map((option) {
             bool isSelected = selectedValue == option;
             return InkWell(
               onTap: () {
-                onSelected(option); // ส่งค่าที่เลือกกลับ
+                onSelected(option);
               },
               child: Container(
-                width: double.infinity, // ให้กินความกว้างทั้งหมดใน Expanded
-                padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 4.0), // Padding ของแต่ละตัวเลือก
-                color: Colors.transparent, // ทำให้พื้นหลังโปร่งใสเสมอ
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 4.0),
+                color: Colors.transparent,
                 child: Text(
                   option,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 15,
-                    color: isSelected ? Colors.blue.shade900 : Colors.black87, // เปลี่ยนเฉพาะสีข้อความ
+                    color: isSelected ? Colors.blue.shade900 : Colors.black87,
                   ),
                 ),
               ),
