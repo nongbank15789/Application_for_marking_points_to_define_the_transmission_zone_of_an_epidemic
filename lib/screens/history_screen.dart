@@ -90,7 +90,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
         return data.map((json) => HistoryRecord.fromJson(json)).toList();
       } else {
         throw Exception(
-            'Failed to load history with status code: ${response.statusCode}');
+          'Failed to load history with status code: ${response.statusCode}',
+        );
       }
     } catch (e) {
       throw Exception('Failed to connect to the server: $e');
@@ -296,7 +297,31 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       size: 24,
                     ),
                     onPressed: () {
-                      // TODO: Implement location view action
+                      if (record.latitude != null && record.longitude != null) {
+                        final double? lat = double.tryParse(record.latitude!);
+                        final double? lng = double.tryParse(record.longitude!);
+
+                        if (lat != null && lng != null) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder:
+                                  (_) => MapScreen(
+                                    latitude: double.parse(record.latitude!),
+                                    longitude: double.parse(record.longitude!),
+                                  ),
+                            ),
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('พิกัดไม่ถูกต้อง')),
+                          );
+                        }
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('ไม่มีข้อมูลพิกัด')),
+                        );
+                      }
                     },
                   ),
                   IconButton(
@@ -508,7 +533,8 @@ class _EditHistoryRecordDialogState extends State<EditHistoryRecordDialog> {
         _showInfoDialog('บันทึกข้อมูลเรียบร้อยแล้ว');
       } else {
         _showErrorDialog(
-            'Failed to update record with status code: ${response.statusCode}');
+          'Failed to update record with status code: ${response.statusCode}',
+        );
       }
     } catch (e) {
       Navigator.pop(context);
@@ -555,7 +581,8 @@ class _EditHistoryRecordDialogState extends State<EditHistoryRecordDialog> {
                     _showInfoDialog('ลบข้อมูลเรียบร้อยแล้ว');
                   } else {
                     _showErrorDialog(
-                        'Failed to delete record with status code: ${response.statusCode}');
+                      'Failed to delete record with status code: ${response.statusCode}',
+                    );
                   }
                 } catch (e) {
                   Navigator.pop(context);
@@ -648,8 +675,11 @@ class _EditHistoryRecordDialogState extends State<EditHistoryRecordDialog> {
               const SizedBox(height: 16),
               _buildDatePickerField('หายวันที่', _endDateController),
               const SizedBox(height: 16),
-              _buildTextField('เบอร์', _phoneNumberController,
-                  keyboardType: TextInputType.phone),
+              _buildTextField(
+                'เบอร์',
+                _phoneNumberController,
+                keyboardType: TextInputType.phone,
+              ),
               const SizedBox(height: 16),
               _buildDangerLevelDropdown(),
               const SizedBox(height: 16),
@@ -702,8 +732,11 @@ class _EditHistoryRecordDialogState extends State<EditHistoryRecordDialog> {
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller,
-      {TextInputType? keyboardType}) {
+  Widget _buildTextField(
+    String label,
+    TextEditingController controller, {
+    TextInputType? keyboardType,
+  }) {
     return TextField(
       controller: controller,
       keyboardType: keyboardType,
@@ -793,9 +826,10 @@ class _EditHistoryRecordDialogState extends State<EditHistoryRecordDialog> {
           borderSide: const BorderSide(color: Color(0xFF0077C2), width: 2),
         ),
       ),
-      items: dangerLevels.map((String value) {
-        return DropdownMenuItem<String>(value: value, child: Text(value));
-      }).toList(),
+      items:
+          dangerLevels.map((String value) {
+            return DropdownMenuItem<String>(value: value, child: Text(value));
+          }).toList(),
       onChanged: (String? newValue) {
         setState(() {
           _selectedDangerLevel = newValue;

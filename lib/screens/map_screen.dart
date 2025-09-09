@@ -15,8 +15,10 @@ import 'package:geocoding/geocoding.dart';
 
 class MapScreen extends StatefulWidget {
   final int? userId;
+  final double? latitude;
+  final double? longitude;
 
-  const MapScreen({super.key, this.userId});
+  const MapScreen({super.key, this.userId, this.latitude, this.longitude});
 
   @override
   State<MapScreen> createState() => _MapScreenState();
@@ -118,83 +120,122 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   void _applyFilters() {
-    final filteredPatients = _allPatients.where((patient) {
-      final isDiseaseMatch = _activeFilters['disease'] == 'ทั้งหมด' ||
-          (patient['pat_epidemic']?.toString() ?? '') == _activeFilters['disease'];
+    final filteredPatients =
+        _allPatients.where((patient) {
+          final isDiseaseMatch =
+              _activeFilters['disease'] == 'ทั้งหมด' ||
+              (patient['pat_epidemic']?.toString() ?? '') ==
+                  _activeFilters['disease'];
 
-      final isDangerMatch = _activeFilters['danger'] == 'ทั้งหมด' ||
-          (patient['pat_danger_level']?.toString() ?? '') == _activeFilters['danger'];
-      
-      bool isInfectionDateMatch = true;
-      if (_activeFilters['infectedDate'] != 'ทั้งหมด') {
-        final infectedDateString = patient['pat_infection_date']?.toString();
-        if (infectedDateString != null && infectedDateString.isNotEmpty) {
-          final infectedDate = DateTime.tryParse(infectedDateString);
-          if (infectedDate != null) {
-            final now = DateTime.now();
-            final today = DateTime(now.year, now.month, now.day);
-            final patientDate = DateTime(infectedDate.year, infectedDate.month, infectedDate.day);
+          final isDangerMatch =
+              _activeFilters['danger'] == 'ทั้งหมด' ||
+              (patient['pat_danger_level']?.toString() ?? '') ==
+                  _activeFilters['danger'];
 
-            switch (_activeFilters['infectedDate']) {
-              case 'วันนี้':
-                isInfectionDateMatch = patientDate.isAtSameMomentAs(today);
-                break;
-              case 'สัปดาห์นี้':
-                final startOfWeek = today.subtract(Duration(days: today.weekday - 1));
-                final endOfWeek = startOfWeek.add(const Duration(days: 7));
-                isInfectionDateMatch = (patientDate.isAfter(startOfWeek) && patientDate.isBefore(endOfWeek)) || patientDate.isAtSameMomentAs(startOfWeek);
-                break;
-              case 'เดือนนี้':
-                final startOfMonth = DateTime(now.year, now.month, 1);
-                final endOfMonth = DateTime(now.year, now.month + 1, 1);
-                isInfectionDateMatch = (patientDate.isAfter(startOfMonth) && patientDate.isBefore(endOfMonth)) || patientDate.isAtSameMomentAs(startOfMonth);
-                break;
-              case 'ปีนี้':
-                final startOfYear = DateTime(now.year, 1, 1);
-                final endOfYear = DateTime(now.year + 1, 1, 1);
-                isInfectionDateMatch = (patientDate.isAfter(startOfYear) && patientDate.isBefore(endOfYear)) || patientDate.isAtSameMomentAs(startOfYear);
-                break;
+          bool isInfectionDateMatch = true;
+          if (_activeFilters['infectedDate'] != 'ทั้งหมด') {
+            final infectedDateString =
+                patient['pat_infection_date']?.toString();
+            if (infectedDateString != null && infectedDateString.isNotEmpty) {
+              final infectedDate = DateTime.tryParse(infectedDateString);
+              if (infectedDate != null) {
+                final now = DateTime.now();
+                final today = DateTime(now.year, now.month, now.day);
+                final patientDate = DateTime(
+                  infectedDate.year,
+                  infectedDate.month,
+                  infectedDate.day,
+                );
+
+                switch (_activeFilters['infectedDate']) {
+                  case 'วันนี้':
+                    isInfectionDateMatch = patientDate.isAtSameMomentAs(today);
+                    break;
+                  case 'สัปดาห์นี้':
+                    final startOfWeek = today.subtract(
+                      Duration(days: today.weekday - 1),
+                    );
+                    final endOfWeek = startOfWeek.add(const Duration(days: 7));
+                    isInfectionDateMatch =
+                        (patientDate.isAfter(startOfWeek) &&
+                            patientDate.isBefore(endOfWeek)) ||
+                        patientDate.isAtSameMomentAs(startOfWeek);
+                    break;
+                  case 'เดือนนี้':
+                    final startOfMonth = DateTime(now.year, now.month, 1);
+                    final endOfMonth = DateTime(now.year, now.month + 1, 1);
+                    isInfectionDateMatch =
+                        (patientDate.isAfter(startOfMonth) &&
+                            patientDate.isBefore(endOfMonth)) ||
+                        patientDate.isAtSameMomentAs(startOfMonth);
+                    break;
+                  case 'ปีนี้':
+                    final startOfYear = DateTime(now.year, 1, 1);
+                    final endOfYear = DateTime(now.year + 1, 1, 1);
+                    isInfectionDateMatch =
+                        (patientDate.isAfter(startOfYear) &&
+                            patientDate.isBefore(endOfYear)) ||
+                        patientDate.isAtSameMomentAs(startOfYear);
+                    break;
+                }
+              }
             }
           }
-        }
-      }
 
-      bool isRecoveryDateMatch = true;
-      if (_activeFilters['recoveryDate'] != 'ทั้งหมด') {
-        final recoveryDateString = patient['pat_recovery_date']?.toString();
-        if (recoveryDateString != null && recoveryDateString.isNotEmpty) {
-          final recoveryDate = DateTime.tryParse(recoveryDateString);
-          if (recoveryDate != null) {
-            final now = DateTime.now();
-            final today = DateTime(now.year, now.month, now.day);
-            final patientDate = DateTime(recoveryDate.year, recoveryDate.month, recoveryDate.day);
+          bool isRecoveryDateMatch = true;
+          if (_activeFilters['recoveryDate'] != 'ทั้งหมด') {
+            final recoveryDateString = patient['pat_recovery_date']?.toString();
+            if (recoveryDateString != null && recoveryDateString.isNotEmpty) {
+              final recoveryDate = DateTime.tryParse(recoveryDateString);
+              if (recoveryDate != null) {
+                final now = DateTime.now();
+                final today = DateTime(now.year, now.month, now.day);
+                final patientDate = DateTime(
+                  recoveryDate.year,
+                  recoveryDate.month,
+                  recoveryDate.day,
+                );
 
-            switch (_activeFilters['recoveryDate']) {
-              case 'วันนี้':
-                isRecoveryDateMatch = patientDate.isAtSameMomentAs(today);
-                break;
-              case 'สัปดาห์นี้':
-                final startOfWeek = today.subtract(Duration(days: today.weekday - 1));
-                final endOfWeek = startOfWeek.add(const Duration(days: 7));
-                isRecoveryDateMatch = (patientDate.isAfter(startOfWeek) && patientDate.isBefore(endOfWeek)) || patientDate.isAtSameMomentAs(startOfWeek);
-                break;
-              case 'เดือนนี้':
-                final startOfMonth = DateTime(now.year, now.month, 1);
-                final endOfMonth = DateTime(now.year, now.month + 1, 1);
-                isRecoveryDateMatch = (patientDate.isAfter(startOfMonth) && patientDate.isBefore(endOfMonth)) || patientDate.isAtSameMomentAs(startOfMonth);
-                break;
-              case 'ปีนี้':
-                final startOfYear = DateTime(now.year, 1, 1);
-                final endOfYear = DateTime(now.year + 1, 1, 1);
-                isRecoveryDateMatch = (patientDate.isAfter(startOfYear) && patientDate.isBefore(endOfYear)) || patientDate.isAtSameMomentAs(startOfYear);
-                break;
+                switch (_activeFilters['recoveryDate']) {
+                  case 'วันนี้':
+                    isRecoveryDateMatch = patientDate.isAtSameMomentAs(today);
+                    break;
+                  case 'สัปดาห์นี้':
+                    final startOfWeek = today.subtract(
+                      Duration(days: today.weekday - 1),
+                    );
+                    final endOfWeek = startOfWeek.add(const Duration(days: 7));
+                    isRecoveryDateMatch =
+                        (patientDate.isAfter(startOfWeek) &&
+                            patientDate.isBefore(endOfWeek)) ||
+                        patientDate.isAtSameMomentAs(startOfWeek);
+                    break;
+                  case 'เดือนนี้':
+                    final startOfMonth = DateTime(now.year, now.month, 1);
+                    final endOfMonth = DateTime(now.year, now.month + 1, 1);
+                    isRecoveryDateMatch =
+                        (patientDate.isAfter(startOfMonth) &&
+                            patientDate.isBefore(endOfMonth)) ||
+                        patientDate.isAtSameMomentAs(startOfMonth);
+                    break;
+                  case 'ปีนี้':
+                    final startOfYear = DateTime(now.year, 1, 1);
+                    final endOfYear = DateTime(now.year + 1, 1, 1);
+                    isRecoveryDateMatch =
+                        (patientDate.isAfter(startOfYear) &&
+                            patientDate.isBefore(endOfYear)) ||
+                        patientDate.isAtSameMomentAs(startOfYear);
+                    break;
+                }
+              }
             }
           }
-        }
-      }
 
-      return isDiseaseMatch && isDangerMatch && isInfectionDateMatch && isRecoveryDateMatch;
-    }).toList();
+          return isDiseaseMatch &&
+              isDangerMatch &&
+              isInfectionDateMatch &&
+              isRecoveryDateMatch;
+        }).toList();
 
     // TODO: เพิ่มการเรียงลำดับตาม _activeFilters['sortBy']
 
@@ -214,11 +255,17 @@ class _MapScreenState extends State<MapScreen> {
         final double lng =
             double.tryParse(patient['pat_longitude']?.toString() ?? '') ?? 0.0;
         final String name = patient['pat_name']?.toString() ?? 'ไม่ระบุ';
-        final String danger = patient['pat_danger_level']?.toString() ?? 'ไม่ระบุ';
-        final String description = patient['pat_description']?.toString() ?? 'ไม่มีคำอธิบาย';
-        final double dangerRange = double.tryParse(patient['pat_danger_range']?.toString() ?? '0') ?? 0;
-        final String infectedDisease = patient['pat_epidemic']?.toString() ?? 'ไม่ระบุ';
-        final String recoveryDate = patient['pat_recovery_date']?.toString() ?? '';
+        final String danger =
+            patient['pat_danger_level']?.toString() ?? 'ไม่ระบุ';
+        final String description =
+            patient['pat_description']?.toString() ?? 'ไม่มีคำอธิบาย';
+        final double dangerRange =
+            double.tryParse(patient['pat_danger_range']?.toString() ?? '0') ??
+            0;
+        final String infectedDisease =
+            patient['pat_epidemic']?.toString() ?? 'ไม่ระบุ';
+        final String recoveryDate =
+            patient['pat_recovery_date']?.toString() ?? '';
 
         final String markerIdVal = 'patient_${patient['pat_id']}';
         final MarkerId markerId = MarkerId(markerIdVal);
@@ -248,12 +295,17 @@ class _MapScreenState extends State<MapScreen> {
           position: LatLng(lat, lng),
           infoWindow: InfoWindow(
             title: 'ผู้ป่วย: $name',
-            snippet:
-                'ระดับความอันตราย: $danger\nโรค: $infectedDisease',
+            snippet: 'ระดับความอันตราย: $danger\nโรค: $infectedDisease',
           ),
           icon: BitmapDescriptor.defaultMarkerWithHue(hueColor),
           onTap: () {
-            _updateBottomSheet(name, danger, description, infectedDisease, recoveryDate);
+            _updateBottomSheet(
+              name,
+              danger,
+              description,
+              infectedDisease,
+              recoveryDate,
+            );
           },
         );
         setState(() {
@@ -425,7 +477,11 @@ class _MapScreenState extends State<MapScreen> {
       );
       if (mounted) {
         setState(() {
-          _center = LatLng(pos.latitude, pos.longitude);
+          if (widget.latitude == null) {
+            _center = LatLng(pos.latitude, pos.longitude);
+          }else{
+            _center = LatLng(widget.latitude!, widget.longitude!);
+          }
         });
       }
       if (_controller.isCompleted) {
@@ -626,18 +682,20 @@ class _MapScreenState extends State<MapScreen> {
                         CircleAvatar(
                           radius: 30,
                           backgroundImage:
-                              (userData != null && userData!['stf_avatar'] != null)
+                              (userData != null &&
+                                      userData!['stf_avatar'] != null)
                                   ? NetworkImage(
-                                      "http://10.0.2.2/api/${userData!['stf_avatar']}",
-                                    )
+                                    "http://10.0.2.2/api/${userData!['stf_avatar']}",
+                                  )
                                   : null,
                           child:
-                              (userData == null || userData!['stf_avatar'] == null)
+                              (userData == null ||
+                                      userData!['stf_avatar'] == null)
                                   ? const Icon(
-                                      Icons.person,
-                                      size: 40,
-                                      color: Colors.grey,
-                                    )
+                                    Icons.person,
+                                    size: 40,
+                                    color: Colors.grey,
+                                  )
                                   : null,
                         ),
                         const SizedBox(height: 6),
@@ -680,10 +738,13 @@ class _MapScreenState extends State<MapScreen> {
               icon: Icons.filter_list,
               title: 'ตัวกรองแผนที่',
               onTap: () async {
-                final selectedFilters = await Navigator.push<Map<String, dynamic>>(
-                  context,
-                  MaterialPageRoute(builder: (context) => const FilterScreen()),
-                );
+                final selectedFilters =
+                    await Navigator.push<Map<String, dynamic>>(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const FilterScreen(),
+                      ),
+                    );
                 if (selectedFilters != null) {
                   setState(() {
                     _activeFilters = selectedFilters;
@@ -714,10 +775,11 @@ class _MapScreenState extends State<MapScreen> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => AddDataScreen(
-                        latitude: _lastMarkerLat!,
-                        longitude: _lastMarkerLng!,
-                      ),
+                      builder:
+                          (context) => AddDataScreen(
+                            latitude: _lastMarkerLat!,
+                            longitude: _lastMarkerLng!,
+                          ),
                     ),
                   );
                 } else if (_center != null) {
@@ -725,10 +787,11 @@ class _MapScreenState extends State<MapScreen> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => AddDataScreen(
-                        latitude: _center!.latitude,
-                        longitude: _center!.longitude,
-                      ),
+                      builder:
+                          (context) => AddDataScreen(
+                            latitude: _center!.latitude,
+                            longitude: _center!.longitude,
+                          ),
                     ),
                   );
                 } else {
@@ -869,68 +932,68 @@ class _MapScreenState extends State<MapScreen> {
       maxChildSize: 0.6,
       builder:
           (context, scrollCtrl) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
-        ),
-        child: ListView(
-          controller: scrollCtrl,
-          padding: const EdgeInsets.all(16),
-          children: [
-            const Center(
-              child: Icon(Icons.drag_handle, color: Colors.grey),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
             ),
-            const SizedBox(height: 8),
-            Row(
+            child: ListView(
+              controller: scrollCtrl,
+              padding: const EdgeInsets.all(16),
               children: [
-                const Icon(Icons.location_on, color: Colors.red),
-                const SizedBox(width: 8),
-                Text(
-                  _bottomSheetTitle,
-                  style: const TextStyle(fontSize: 18),
+                const Center(
+                  child: Icon(Icons.drag_handle, color: Colors.grey),
                 ),
-                const Spacer(),
-                Text(_countdownString),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(Icons.location_on, color: Colors.red),
+                    const SizedBox(width: 8),
+                    Text(
+                      _bottomSheetTitle,
+                      style: const TextStyle(fontSize: 18),
+                    ),
+                    const Spacer(),
+                    Text(_countdownString),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Text(
+                      'ระดับความอันตราย: ',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                    Text(
+                      _bottomSheetDanger,
+                      style: const TextStyle(fontSize: 16, color: Colors.red),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Text('โรค: ', style: TextStyle(fontSize: 16)),
+                    Text(
+                      _bottomSheetDisease,
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  maxLines: 4,
+                  controller: TextEditingController(
+                    text: _bottomSheetDescription,
+                  ),
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    labelText: 'คำอธิบาย',
+                  ),
+                  readOnly: true,
+                ),
               ],
             ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                const Text(
-                  'ระดับความอันตราย: ',
-                  style: TextStyle(fontSize: 16),
-                ),
-                Text(
-                  _bottomSheetDanger,
-                  style: const TextStyle(fontSize: 16, color: Colors.red),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                const Text('โรค: ', style: TextStyle(fontSize: 16)),
-                Text(
-                  _bottomSheetDisease,
-                  style: const TextStyle(fontSize: 16),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              maxLines: 4,
-              controller: TextEditingController(
-                text: _bottomSheetDescription,
-              ),
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                labelText: 'คำอธิบาย',
-              ),
-              readOnly: true,
-            ),
-          ],
-        ),
-      ),
+          ),
     );
   }
 }
