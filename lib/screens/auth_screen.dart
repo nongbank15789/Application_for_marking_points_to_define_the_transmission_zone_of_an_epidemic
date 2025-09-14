@@ -344,16 +344,16 @@ class _AuthScreenState extends State<AuthScreen> {
             return null;
           },
         ),
-        Align(
-          alignment: Alignment.centerRight,
-          child: TextButton(
-            onPressed: () {},
-            child: const Text(
-              "Forgot Password?",
-              style: TextStyle(color: Colors.grey),
-            ),
-          ),
-        ),
+        // Align(
+        //   alignment: Alignment.centerRight,
+        //   child: TextButton(
+        //     onPressed: () {},
+        //     child: const Text(
+        //       "Forgot Password?",
+        //       style: TextStyle(color: Colors.grey),
+        //     ),
+        //   ),
+        // ),
       ],
     );
   }

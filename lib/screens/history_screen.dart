@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import 'map_screen.dart';
 import 'package:intl/intl.dart';
 
-// Model class to represent a history record
+// ================== MODEL ==================
 class HistoryRecord {
   final int? id;
   final String? name;
@@ -49,6 +49,7 @@ class HistoryRecord {
   }
 }
 
+// ================== SCREEN ==================
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
 
@@ -107,14 +108,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
   void _showEditDialog(HistoryRecord record) {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
-        return EditHistoryRecordDialog(
-          record: record,
-          onRecordUpdated: () {
-            _performSearch();
-          },
-        );
-      },
+      builder:
+          (_) => EditHistoryRecordDialog(
+            record: record,
+            onRecordUpdated: _performSearch,
+            parentContext: context, // 🔹 ส่ง parent context เข้ามา
+          ),
     );
   }
 
@@ -189,7 +188,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           contentPadding: EdgeInsets.symmetric(vertical: 13.0),
                         ),
                         style: const TextStyle(color: Colors.black87),
-                        onSubmitted: (value) => _performSearch(),
+                        onSubmitted: (_) => _performSearch(),
                       ),
                     ),
                     IconButton(
@@ -206,38 +205,37 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return const Center(child: CircularProgressIndicator());
-                    } else if (snapshot.hasError) {
+                    }
+                    if (snapshot.hasError) {
                       return Center(child: Text('Error: ${snapshot.error}'));
-                    } else if (snapshot.hasData) {
-                      if (snapshot.data!.isEmpty) {
-                        return const Center(child: Text('ไม่พบข้อมูลประวัติ'));
-                      }
-                      return SingleChildScrollView(
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                        child: Column(
-                          children: [
-                            ...snapshot.data!.map(
-                              (record) => Padding(
-                                padding: const EdgeInsets.only(bottom: 16.0),
-                                child: _buildHistoryCard(
-                                  size,
-                                  record: record,
-                                  name: record.name ?? 'ไม่ระบุ',
-                                  disease: record.disease ?? 'ไม่ระบุ',
-                                  startDate: record.startDate ?? 'ไม่ระบุ',
-                                  endDate: record.endDate,
-                                  phoneNumber: record.phoneNumber ?? 'ไม่ระบุ',
-                                  dangerLevel: record.dangerLevel,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-                          ],
-                        ),
-                      );
-                    } else {
+                    }
+                    final list = snapshot.data ?? [];
+                    if (list.isEmpty) {
                       return const Center(child: Text('ไม่พบข้อมูลประวัติ'));
                     }
+                    return SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: Column(
+                        children: [
+                          ...list.map(
+                            (record) => Padding(
+                              padding: const EdgeInsets.only(bottom: 16.0),
+                              child: _buildHistoryCard(
+                                size,
+                                record: record,
+                                name: record.name ?? 'ไม่ระบุ',
+                                disease: record.disease ?? 'ไม่ระบุ',
+                                startDate: record.startDate ?? 'ไม่ระบุ',
+                                endDate: record.endDate,
+                                phoneNumber: record.phoneNumber ?? 'ไม่ระบุ',
+                                dangerLevel: record.dangerLevel,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                        ],
+                      ),
+                    );
                   },
                 ),
               ),
@@ -298,18 +296,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     ),
                     onPressed: () {
                       if (record.latitude != null && record.longitude != null) {
-                        final double? lat = double.tryParse(record.latitude!);
-                        final double? lng = double.tryParse(record.longitude!);
-
+                        final lat = double.tryParse(record.latitude!);
+                        final lng = double.tryParse(record.longitude!);
                         if (lat != null && lng != null) {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder:
-                                  (_) => MapScreen(
-                                    latitude: double.parse(record.latitude!),
-                                    longitude: double.parse(record.longitude!),
-                                  ),
+                                  (_) =>
+                                      MapScreen(latitude: lat, longitude: lng),
                             ),
                           );
                         } else {
@@ -330,9 +325,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       color: Color(0xFF4FC3F7),
                       size: 24,
                     ),
-                    onPressed: () {
-                      _showEditDialog(record);
-                    },
+                    onPressed: () => _showEditDialog(record),
                   ),
                 ],
               ),
@@ -381,14 +374,17 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 }
 
+// ================== EDIT DIALOG ==================
 class EditHistoryRecordDialog extends StatefulWidget {
   final HistoryRecord record;
   final VoidCallback onRecordUpdated;
+  final BuildContext parentContext; // 🔹 เพิ่ม
 
   const EditHistoryRecordDialog({
     super.key,
     required this.record,
     required this.onRecordUpdated,
+    required this.parentContext, // 🔹 เพิ่ม
   });
 
   @override
@@ -398,13 +394,20 @@ class EditHistoryRecordDialog extends StatefulWidget {
 
 class _EditHistoryRecordDialogState extends State<EditHistoryRecordDialog> {
   late final TextEditingController _nameController;
-  late final TextEditingController _diseaseController;
+  late final TextEditingController _diseaseController; // พิมพ์ได้
   late final TextEditingController _startDateController;
   late final TextEditingController _endDateController;
   late final TextEditingController _phoneNumberController;
   String? _selectedDangerLevel;
+  late final TextEditingController
+  _dangerLevelDisplayController; // แสดงค่าระดับความอันตราย (readOnly)
   late final TextEditingController _descriptionController;
   late final TextEditingController _dangerRangeController;
+
+  // list โรคสำหรับ popup
+  bool _diseaseLoading = false;
+  String? _diseaseLoadError;
+  List<String> _diseases = [];
 
   final DateFormat _dateFormat = DateFormat('yyyy-MM-dd');
 
@@ -412,17 +415,21 @@ class _EditHistoryRecordDialogState extends State<EditHistoryRecordDialog> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.record.name);
-    _diseaseController = TextEditingController(text: widget.record.disease);
+    _diseaseController = TextEditingController(
+      text: widget.record.disease,
+    ); // พิมพ์ได้
     _startDateController = TextEditingController(text: widget.record.startDate);
     _endDateController = TextEditingController(text: widget.record.endDate);
     _phoneNumberController = TextEditingController(
       text: widget.record.phoneNumber,
     );
 
-    final List<String> dangerLevels = ['น้อย', 'ปานกลาง', 'มาก'];
-    final String? recordDangerLevel = widget.record.dangerLevel?.trim();
-    _selectedDangerLevel =
-        dangerLevels.contains(recordDangerLevel) ? recordDangerLevel : null;
+    final levels = ['น้อย', 'ปานกลาง', 'มาก'];
+    final r = widget.record.dangerLevel?.trim();
+    _selectedDangerLevel = levels.contains(r) ? r : null;
+    _dangerLevelDisplayController = TextEditingController(
+      text: _selectedDangerLevel ?? '',
+    );
 
     _descriptionController = TextEditingController(
       text: widget.record.description,
@@ -430,6 +437,8 @@ class _EditHistoryRecordDialogState extends State<EditHistoryRecordDialog> {
     _dangerRangeController = TextEditingController(
       text: widget.record.dangerRange,
     );
+
+    _loadDiseases();
   }
 
   @override
@@ -439,11 +448,219 @@ class _EditHistoryRecordDialogState extends State<EditHistoryRecordDialog> {
     _startDateController.dispose();
     _endDateController.dispose();
     _phoneNumberController.dispose();
+    _dangerLevelDisplayController.dispose();
     _descriptionController.dispose();
     _dangerRangeController.dispose();
     super.dispose();
   }
 
+  // ---------- load diseases ----------
+  Future<void> _loadDiseases() async {
+    setState(() {
+      _diseaseLoading = true;
+      _diseaseLoadError = null;
+      _diseases = [];
+    });
+
+    try {
+      final res = await http.get(
+        Uri.parse('http://10.0.2.2/api/get_all_patients.php'),
+      );
+      if (res.statusCode != 200) throw Exception('HTTP ${res.statusCode}');
+      final decoded = jsonDecode(res.body);
+
+      final set = <String>{};
+      if (decoded is List) {
+        for (final row in decoded) {
+          final s =
+              (row['pat_epidemic'] ?? row['epidemic'])?.toString().trim() ?? '';
+          if (s.isNotEmpty && s.toLowerCase() != 'ทั้งหมด') set.add(s);
+        }
+      }
+      final list =
+          set.toList()
+            ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+
+      if (!mounted) return;
+      setState(() {
+        _diseases = list;
+        _diseaseLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _diseaseLoading = false;
+        _diseaseLoadError = 'โหลดรายการโรคไม่สำเร็จ: $e';
+      });
+    }
+  }
+
+  // ---------- disease popup (ค้นหาได้) ----------
+  Future<void> _openDiseasePicker() async {
+    if (_diseases.isEmpty && !_diseaseLoading) {
+      await _loadDiseases();
+    }
+    String q = '';
+    List<String> filtered = List.of(_diseases);
+
+    final picked = await showDialog<String>(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setSB) {
+            void filter(String s) {
+              q = s;
+              final lower = s.toLowerCase();
+              filtered =
+                  _diseases
+                      .where((e) => e.toLowerCase().contains(lower))
+                      .toList();
+              setSB(() {});
+            }
+
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: const Text('เลือก โรคที่ติด'),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      autofocus: true,
+                      decoration: InputDecoration(
+                        hintText: 'พิมพ์เพื่อค้นหา...',
+                        prefixIcon: const Icon(Icons.search),
+                        isDense: true,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      onChanged: filter,
+                    ),
+                    const SizedBox(height: 10),
+                    if (_diseaseLoading)
+                      const SizedBox(
+                        height: 120,
+                        child: Center(child: CircularProgressIndicator()),
+                      )
+                    else if (_diseaseLoadError != null)
+                      SizedBox(
+                        height: 120,
+                        child: Center(
+                          child: Text(
+                            _diseaseLoadError!,
+                            style: TextStyle(color: Colors.red),
+                          ),
+                        ),
+                      )
+                    else
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxHeight: 360),
+                        child:
+                            filtered.isEmpty
+                                ? const Center(child: Text('ไม่พบรายการ'))
+                                : ListView.separated(
+                                  itemCount: filtered.length,
+                                  separatorBuilder:
+                                      (_, __) => const Divider(height: 1),
+                                  itemBuilder: (_, i) {
+                                    final name = filtered[i];
+                                    return ListTile(
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 8,
+                                          ),
+                                      title: Text(
+                                        name,
+                                        style: const TextStyle(
+                                          fontSize: 18,
+                                          height: 1.3,
+                                        ),
+                                      ),
+                                      onTap: () => Navigator.pop(ctx, name),
+                                    );
+                                  },
+                                ),
+                      ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('ยกเลิก'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() {
+        _diseaseController.text = picked; // ใส่ลงช่อง (ผู้ใช้ยังแก้ไขต่อได้)
+      });
+    }
+  }
+
+  // ---------- danger popup ----------
+  Future<void> _openDangerPicker() async {
+    const levels = ['น้อย', 'ปานกลาง', 'มาก'];
+    final picked = await showDialog<String>(
+      context: context,
+      builder:
+          (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: const Text('เลือกระดับความอันตราย'),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children:
+                    levels
+                        .map(
+                          (e) => ListTile(
+                            leading: Icon(
+                              _selectedDangerLevel == e
+                                  ? Icons.radio_button_checked
+                                  : Icons.radio_button_off,
+                              color: const Color(0xFF0077C2),
+                            ),
+                            title: Text(
+                              e,
+                              style: const TextStyle(fontSize: 18),
+                            ),
+                            onTap: () => Navigator.pop(ctx, e),
+                          ),
+                        )
+                        .toList(),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('ยกเลิก'),
+              ),
+            ],
+          ),
+    );
+
+    if (picked != null) {
+      setState(() {
+        _selectedDangerLevel = picked;
+        _dangerLevelDisplayController.text = picked;
+      });
+    }
+  }
+
+  // ---------- date ----------
   Future<void> _selectDate(
     BuildContext context,
     TextEditingController controller,
@@ -451,207 +668,171 @@ class _EditHistoryRecordDialogState extends State<EditHistoryRecordDialog> {
     DateTime? initialDate;
     try {
       if (controller.text.isNotEmpty && controller.text != '0000-00-00') {
-        final parsedDate = _dateFormat.parse(controller.text);
-        if (parsedDate.year >= 2000) {
-          initialDate = parsedDate;
-        } else {
-          initialDate = DateTime.now();
-        }
+        final parsed = _dateFormat.parse(controller.text);
+        initialDate = parsed.year >= 2000 ? parsed : DateTime.now();
       }
-    } catch (e) {
+    } catch (_) {
       initialDate = DateTime.now();
     }
 
-    final DateTime firstDate = DateTime(2000);
-
-    final DateTime? picked = await showDatePicker(
+    final picked = await showDatePicker(
       context: context,
       initialDate: initialDate ?? DateTime.now(),
-      firstDate: firstDate,
+      firstDate: DateTime(2000),
       lastDate: DateTime(2101),
     );
     if (picked != null) {
-      setState(() {
-        controller.text = _dateFormat.format(picked);
-      });
+      setState(() => controller.text = _dateFormat.format(picked));
     }
   }
 
+  // ---------- save/delete ----------
   Future<void> _saveChanges() async {
-    // Basic validation
     if (_nameController.text.isEmpty) {
-      _showErrorDialog('กรุณาใส่ชื่อ');
+      _showError('กรุณาใส่ชื่อ');
       return;
     }
     if (_diseaseController.text.isEmpty) {
-      _showErrorDialog('กรุณาใส่โรคที่ติด');
+      _showError('กรุณาใส่โรคที่ติด');
       return;
     }
     if (_phoneNumberController.text.isEmpty) {
-      _showErrorDialog('กรุณาใส่เบอร์โทรศัพท์');
+      _showError('กรุณาใส่เบอร์โทรศัพท์');
       return;
     }
-    if (_dangerRangeController.text.isNotEmpty) {
-      final dangerRange = double.tryParse(_dangerRangeController.text);
-      if (dangerRange == null) {
-        _showErrorDialog('ระยะอันตรายต้องเป็นตัวเลขเท่านั้น');
-        return;
-      }
+    if (_dangerRangeController.text.isNotEmpty &&
+        double.tryParse(_dangerRangeController.text) == null) {
+      _showError('ระยะอันตรายต้องเป็นตัวเลขเท่านั้น');
+      return;
     }
 
     showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return const Center(child: CircularProgressIndicator());
-      },
+    context: context,
+    barrierDismissible: false,
+    builder: (_) => const Center(child: CircularProgressIndicator()),
+  );
+
+  final uri = Uri.http('10.0.2.2:80', '/api/update_history.php');
+  try {
+    final response = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'pat_id': widget.record.id,
+        'pat_name': _nameController.text,
+        'pat_epidemic': _diseaseController.text,
+        'pat_infection_date': _startDateController.text,
+        'pat_recovery_date': _endDateController.text,
+        'pat_phone': _phoneNumberController.text,
+        'pat_danger_level': _selectedDangerLevel,
+        'pat_description': _descriptionController.text,
+        'pat_danger_range': _dangerRangeController.text,
+      }),
     );
 
-    final uri = Uri.http('10.0.2.2:80', '/api/update_history.php');
-    try {
-      final response = await http.post(
-        uri,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'pat_id': widget.record.id,
-          'pat_name': _nameController.text,
-          'pat_epidemic': _diseaseController.text,
-          'pat_infection_date': _startDateController.text,
-          'pat_recovery_date': _endDateController.text,
-          'pat_phone': _phoneNumberController.text,
-          'pat_danger_level': _selectedDangerLevel,
-          'pat_description': _descriptionController.text,
-          'pat_danger_range': _dangerRangeController.text,
-        }),
-      );
+    if (!mounted) return;
+    Navigator.pop(context); // ปิด loading
 
-      Navigator.pop(context);
+    if (response.statusCode == 200) {
+      widget.onRecordUpdated();
+      if (!mounted) return;
+      Navigator.pop(context); // ปิด dialog แก้ไข
 
-      if (response.statusCode == 200) {
-        widget.onRecordUpdated();
-        Navigator.pop(context);
-        _showInfoDialog('บันทึกข้อมูลเรียบร้อยแล้ว');
-      } else {
-        _showErrorDialog(
-          'Failed to update record with status code: ${response.statusCode}',
-        );
-      }
-    } catch (e) {
-      Navigator.pop(context);
-      _showErrorDialog('Error: $e');
+      // แจ้งสำเร็จด้วย parentContext (ซึ่งยัง mounted)
+      _showInfo('บันทึกข้อมูลเรียบร้อยแล้ว');
+    } else {
+      _showError('Failed to update record with status code: ${response.statusCode}');
     }
+  } catch (e) {
+    if (!mounted) return;
+    Navigator.pop(context); // ปิด loading ถ้ายังเปิดอยู่
+    _showError('Error: $e');
   }
+}
 
   Future<void> _deleteRecord() async {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('ยืนยันการลบ'),
-          content: const Text('คุณแน่ใจหรือไม่ว่าต้องการลบข้อมูลทั้งหมดนี้?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('ยกเลิก'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                Navigator.pop(context);
-                showDialog(
-                  context: context,
-                  barrierDismissible: false,
-                  builder: (BuildContext context) {
-                    return const Center(child: CircularProgressIndicator());
-                  },
-                );
+  showDialog(
+    context: context,
+    builder: (_) => AlertDialog(
+      title: const Text('ยืนยันการลบ'),
+      content: const Text('คุณแน่ใจหรือไม่ว่าต้องการลบข้อมูลทั้งหมดนี้?'),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('ยกเลิก')),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+          onPressed: () async {
+            Navigator.pop(context); // ปิดกล่องยืนยัน
+            showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (_) => const Center(child: CircularProgressIndicator()),
+            );
 
-                final uri = Uri.http('10.0.2.2:80', '/api/delete_history.php');
-                try {
-                  final response = await http.post(
-                    uri,
-                    headers: {'Content-Type': 'application/json'},
-                    body: jsonEncode({'id': widget.record.id}),
-                  );
+            final uri = Uri.http('10.0.2.2:80', '/api/delete_history.php');
+            try {
+              final res = await http.post(
+                uri,
+                headers: {'Content-Type': 'application/json'},
+                body: jsonEncode({'id': widget.record.id}),
+              );
 
-                  Navigator.pop(context);
+              if (!mounted) return;
+              Navigator.pop(context); // ปิด loading
 
-                  if (response.statusCode == 200) {
-                    widget.onRecordUpdated();
-                    Navigator.pop(context);
-                    _showInfoDialog('ลบข้อมูลเรียบร้อยแล้ว');
-                  } else {
-                    _showErrorDialog(
-                      'Failed to delete record with status code: ${response.statusCode}',
-                    );
-                  }
-                } catch (e) {
-                  Navigator.pop(context);
-                  _showErrorDialog('Error: $e');
-                }
-              },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-              child: const Text('ลบ', style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        );
-      },
-    );
-  }
+              if (res.statusCode == 200) {
+                widget.onRecordUpdated();
+                if (!mounted) return;
+                Navigator.pop(context); // ปิด dialog แก้ไข
+                _showInfo('ลบข้อมูลเรียบร้อยแล้ว');
+              } else {
+                _showError('Failed to delete record with status code: ${res.statusCode}');
+              }
+            } catch (e) {
+              if (!mounted) return;
+              Navigator.pop(context); // ปิด loading
+              _showError('Error: $e');
+            }
+          },
+          child: const Text('ลบ', style: TextStyle(color: Colors.white)),
+        ),
+      ],
+    ),
+  );
+}
 
-  void _showErrorDialog(String message) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text(
-            'ข้อผิดพลาด',
-            style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-          ),
-          content: Text(message),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('ตกลง'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
 
-  void _showInfoDialog(String message) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text(
-            'สำเร็จ',
-            style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
-          ),
-          content: Text(message),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('ตกลง'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
+  // ---------- dialogs ----------
+  void _showError(String msg) {
+  if (!mounted) return;
+  showDialog(
+    context: widget.parentContext, // 🔹 ใช้ parent
+    builder: (ctx) => AlertDialog(
+      title: const Text('ข้อผิดพลาด', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+      content: Text(msg),
+      actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('ตกลง'))],
+    ),
+  );
+}
 
+void _showInfo(String msg) {
+  if (!mounted) return;
+  showDialog(
+    context: widget.parentContext, // 🔹 ใช้ parent
+    builder: (ctx) => AlertDialog(
+      title: const Text('สำเร็จ', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+      content: Text(msg),
+      actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('ตกลง'))],
+    ),
+  );
+}
+
+  // ---------- UI ----------
   @override
   Widget build(BuildContext context) {
     return FractionallySizedBox(
       widthFactor: 0.99,
       child: AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20.0),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         elevation: 10,
         contentPadding: const EdgeInsets.all(24),
         title: const Text(
@@ -669,8 +850,11 @@ class _EditHistoryRecordDialogState extends State<EditHistoryRecordDialog> {
             children: [
               _buildTextField('ชื่อ', _nameController),
               const SizedBox(height: 16),
-              _buildTextField('โรคที่ติด', _diseaseController),
+
+              // โรคที่ติด: พิมพ์ได้ + ไอคอนเปิด popup
+              _buildDiseaseInputField(),
               const SizedBox(height: 16),
+
               _buildDatePickerField('ติดวันที่', _startDateController),
               const SizedBox(height: 16),
               _buildDatePickerField('หายวันที่', _endDateController),
@@ -681,8 +865,11 @@ class _EditHistoryRecordDialogState extends State<EditHistoryRecordDialog> {
                 keyboardType: TextInputType.phone,
               ),
               const SizedBox(height: 16),
-              _buildDangerLevelDropdown(),
+
+              // ระดับความอันตราย: popup
+              _buildDangerPopupField(),
               const SizedBox(height: 16),
+
               _buildDescriptionField('คำอธิบาย', _descriptionController),
               const SizedBox(height: 16),
               _buildDangerRangeField('ระยะอันตราย', _dangerRangeController),
@@ -757,6 +944,66 @@ class _EditHistoryRecordDialogState extends State<EditHistoryRecordDialog> {
     );
   }
 
+  // ---- Disease editable + popup button
+  Widget _buildDiseaseInputField() {
+    return TextField(
+      controller: _diseaseController, // พิมพ์ได้
+      decoration: InputDecoration(
+        labelText: 'โรคที่ติด',
+        labelStyle: TextStyle(color: Colors.blueGrey[700]),
+        filled: true,
+        fillColor: Colors.grey[200],
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFF0077C2), width: 2),
+        ),
+        suffixIcon: IconButton(
+          tooltip: 'เลือกรายการ',
+          icon: const Icon(
+            Icons.format_list_bulleted,
+            color: Color(0xFF0077C2),
+          ),
+          onPressed: _openDiseasePicker,
+        ),
+      ),
+    );
+  }
+
+  // ---- Danger popup field (readOnly + popup)
+  Widget _buildDangerPopupField() {
+    return TextField(
+      controller: _dangerLevelDisplayController,
+      readOnly: true,
+      decoration: InputDecoration(
+        labelText: 'ระดับความอันตราย',
+        labelStyle: TextStyle(color: Colors.blueGrey[700]),
+        filled: true,
+        fillColor: Colors.grey[200],
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFF0077C2), width: 2),
+        ),
+        suffixIcon: IconButton(
+          tooltip: 'เลือกระดับ',
+          icon: const Icon(
+            Icons.format_list_bulleted,
+            color: Color(0xFF0077C2),
+          ),
+          onPressed: _openDangerPicker,
+        ),
+      ),
+      onTap: _openDangerPicker,
+    );
+  }
+
   Widget _buildDescriptionField(
     String label,
     TextEditingController controller,
@@ -805,36 +1052,6 @@ class _EditHistoryRecordDialogState extends State<EditHistoryRecordDialog> {
         ),
       ),
       onTap: () => _selectDate(context, controller),
-    );
-  }
-
-  Widget _buildDangerLevelDropdown() {
-    final List<String> dangerLevels = ['น้อย', 'ปานกลาง', 'มาก'];
-    return DropdownButtonFormField<String>(
-      value: _selectedDangerLevel,
-      decoration: InputDecoration(
-        labelText: 'ระดับความอันตราย',
-        labelStyle: TextStyle(color: Colors.blueGrey[700]),
-        filled: true,
-        fillColor: Colors.grey[200],
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF0077C2), width: 2),
-        ),
-      ),
-      items:
-          dangerLevels.map((String value) {
-            return DropdownMenuItem<String>(value: value, child: Text(value));
-          }).toList(),
-      onChanged: (String? newValue) {
-        setState(() {
-          _selectedDangerLevel = newValue;
-        });
-      },
     );
   }
 

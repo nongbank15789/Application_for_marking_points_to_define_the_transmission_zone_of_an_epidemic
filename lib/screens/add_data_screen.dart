@@ -19,9 +19,10 @@ class AddDataScreen extends StatefulWidget {
 }
 
 class _AddDataScreenState extends State<AddDataScreen> {
-  // Controllers for each TextField
+  // Controllers
   final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _diseaseController = TextEditingController();
+  final TextEditingController _diseaseController =
+      TextEditingController(); // ค่าที่จะส่งไป API
   final TextEditingController _startDateController = TextEditingController();
   final TextEditingController _healingDateController = TextEditingController();
   final TextEditingController _phoneNumberController = TextEditingController();
@@ -29,29 +30,28 @@ class _AddDataScreenState extends State<AddDataScreen> {
   final TextEditingController _longitudeController = TextEditingController();
   final TextEditingController _dangerRangeController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
+  final TextEditingController _dangerLevelController = TextEditingController();
 
-  // State variable for the selected danger level
+  // Danger level (เลือกจากลิสต์เท่านั้น)
   String? _selectedDangerLevel;
   final List<String> _dangerLevelOptions = ['น้อย', 'ปานกลาง', 'มาก'];
-  final List<String> _diseaseOptions = [
-    'ไข้เลือดออก',
-    'covid-19',
-    'ไข้หวัดใหญ่',
-  ];
+
+  // Diseases from DB
+  List<String> _diseaseOptions = [];
+  bool _loadingDiseases = true;
 
   @override
   void initState() {
     super.initState();
     _selectedDangerLevel = _dangerLevelOptions[0];
-
-    // Check if latitude and longitude are passed and set them to the controllers
+    _dangerLevelController.text = _selectedDangerLevel!;
     _latitudeController.text = widget.latitude.toString();
     _longitudeController.text = widget.longitude.toString();
+    _fetchDiseases();
   }
 
   @override
   void dispose() {
-    // Dispose controllers to prevent memory leaks
     _nameController.dispose();
     _diseaseController.dispose();
     _startDateController.dispose();
@@ -61,10 +61,154 @@ class _AddDataScreenState extends State<AddDataScreen> {
     _longitudeController.dispose();
     _dangerRangeController.dispose();
     _descriptionController.dispose();
+    _dangerLevelController.dispose();
     super.dispose();
   }
 
-  // Function to select a date from the calendar
+  // ===== Load diseases from API =====
+  Future<void> _fetchDiseases() async {
+    setState(() => _loadingDiseases = true);
+    try {
+      final res = await http.get(
+        Uri.parse('http://10.0.2.2/api/add_data.php?mode=diseases'),
+      );
+      if (res.statusCode == 200) {
+        final decoded = jsonDecode(res.body);
+        final setNames = <String>{};
+
+        if (decoded is List) {
+          for (final item in decoded) {
+            final v =
+                item is String
+                    ? item.trim()
+                    : (item is Map
+                        ? (item['name'] ??
+                                item['disease'] ??
+                                item['epidemic'] ??
+                                item['title'])
+                            ?.toString()
+                            .trim()
+                        : null);
+            if (v != null && v.isNotEmpty) setNames.add(v);
+          }
+        }
+
+        if (!mounted) return;
+        setState(() {
+          _diseaseOptions = setNames.toList()..sort();
+          _loadingDiseases = false;
+        });
+      } else {
+        if (!mounted) return;
+        setState(() {
+          _loadingDiseases = false;
+          _diseaseOptions = []; // ยังพิมพ์เองได้
+        });
+        _showSnackBar('โหลดรายการโรคไม่สำเร็จ: ${res.statusCode}');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loadingDiseases = false;
+        _diseaseOptions = [];
+      });
+      _showSnackBar('เชื่อมต่อ API รายการโรคไม่สำเร็จ: $e');
+    }
+  }
+
+  // ===== Dialog เลือกโรค + ค้นหา =====
+  Future<String?> _showDiseasePickerWithSearch() async {
+    String query = '';
+    List<String> filtered = List.of(_diseaseOptions);
+
+    return showDialog<String>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setStateSB) {
+            void filter(String q) {
+              query = q;
+              final lower = q.toLowerCase();
+              filtered =
+                  _diseaseOptions
+                      .where((e) => e.toLowerCase().contains(lower))
+                      .toList();
+              setStateSB(() {});
+            }
+
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: const Text('เลือก โรคที่ติด'),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      autofocus: true,
+                      decoration: InputDecoration(
+                        hintText: 'พิมพ์เพื่อค้นหา...',
+                        prefixIcon: const Icon(Icons.search),
+                        isDense: true,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      onChanged: filter,
+                    ),
+                    const SizedBox(height: 10),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 320),
+                      child:
+                          filtered.isEmpty
+                              ? const Center(child: Text('ไม่พบรายการ'))
+                              : ListView.separated(
+                                shrinkWrap: true,
+                                itemCount: filtered.length,
+                                separatorBuilder:
+                                    (_, __) => const Divider(height: 1),
+                                itemBuilder: (context, index) {
+                                  final name = filtered[index];
+                                  return ListTile(
+                                    dense: false, // ให้มีความสูงแถวมากขึ้น
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 1, // เพิ่มพื้นที่แตะ
+                                    ),
+                                    title: Text(
+                                      name,
+                                      style: const TextStyle(
+                                        fontSize:
+                                            18, // ← ปรับขนาดตัวอักษรตรงนี้ (เช่น 18–20)
+                                        height: 1.3,
+                                      ),
+                                    ),
+                                    onTap:
+                                        () =>
+                                            Navigator.pop(dialogContext, name),
+                                  );
+                                },
+                              ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('ยกเลิก'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // ===== Date picker =====
   Future<void> _selectDate(
     BuildContext context,
     TextEditingController controller,
@@ -76,15 +220,13 @@ class _AddDataScreenState extends State<AddDataScreen> {
       lastDate: DateTime(2101),
     );
     if (picked != null) {
-      // Use DateFormat to convert DateTime to the desired String format
       controller.text = DateFormat('yyyy-MM-dd').format(picked);
     }
   }
 
-  // Function to validate and save data
+  // ===== Save =====
   Future<void> _validateAndSave() async {
-    // Check required data
-    if (_diseaseController.text.isEmpty) {
+    if (_diseaseController.text.trim().isEmpty) {
       _showSnackBar('กรุณาระบุ โรคที่ติด');
       return;
     }
@@ -97,13 +239,12 @@ class _AddDataScreenState extends State<AddDataScreen> {
       return;
     }
 
-    final url = Uri.parse(
-      'http://10.0.2.2/api/add_data.php',
-    ); // Change this URL
+    final url = Uri.parse('http://10.0.2.2/api/add_data.php');
 
-    Map<String, dynamic> dataToSave = {
+    final dataToSave = {
       'pat_name': _nameController.text,
-      'pat_epidemic': _diseaseController.text,
+      'pat_epidemic':
+          _diseaseController.text.trim(), // พิมพ์เองหรือเลือกจากลิสต์
       'pat_infection_date': _startDateController.text,
       'pat_recovery_date': _healingDateController.text,
       'pat_phone': _phoneNumberController.text,
@@ -125,9 +266,8 @@ class _AddDataScreenState extends State<AddDataScreen> {
         final responseData = jsonDecode(response.body);
         if (responseData['success'] == true) {
           _showSnackBar('บันทึกข้อมูลสำเร็จ!');
-
-          // เคลียร์ข้อมูลในฟอร์ม
           _clearFields();
+          if (!mounted) return;
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (_) => const MapScreen()),
@@ -143,7 +283,6 @@ class _AddDataScreenState extends State<AddDataScreen> {
     }
   }
 
-  // Function to show a SnackBar
   void _showSnackBar(String message) {
     ScaffoldMessenger.of(
       context,
@@ -151,100 +290,118 @@ class _AddDataScreenState extends State<AddDataScreen> {
   }
 
   void _clearFields() {
-    _diseaseController.clear();
+    _nameController.clear();
     _startDateController.clear();
     _healingDateController.clear();
+    _phoneNumberController.clear();
     _dangerRangeController.clear();
     _descriptionController.clear();
-    setState(() {
-      _selectedDangerLevel = _dangerLevelOptions[0];
-    });
+    _selectedDangerLevel = _dangerLevelOptions[0];
+    _dangerLevelController.text = _selectedDangerLevel!;
+    // _diseaseController ไม่ล้าง เพื่อให้ค่าที่พิมพ์คงอยู่ (หากต้องล้าง ให้ใส่ _diseaseController.clear();)
   }
 
-  // Helper widget for creating a TextField with a label and a divider line
+  // ===== Generic input field (ใช้กับช่องอื่น ๆ) =====
   Widget _buildInputField({
     required String label,
     required TextEditingController controller,
     IconData? suffixIcon,
     String? suffixText,
-    List<String>? options,
     VoidCallback? onTap,
-    ValueChanged<String>? onOptionSelected,
     bool readOnly = false,
     TextInputType keyboardType = TextInputType.text,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          TextField(
-            controller: controller,
-            readOnly: readOnly || options != null || onTap != null,
-            onTap:
-                options != null
-                    ? () async {
-                      final String? selectedOption = await showDialog<String>(
-                        context: context,
-                        builder: (BuildContext dialogContext) {
-                          return SimpleDialog(
-                            title: Text('เลือก $label'),
-                            children:
-                                options.map((String option) {
-                                  return SimpleDialogOption(
-                                    onPressed: () {
-                                      Navigator.pop(dialogContext, option);
-                                    },
-                                    child: Text(option),
-                                  );
-                                }).toList(),
-                          );
-                        },
-                      );
-                      if (selectedOption != null) {
-                        controller.text = selectedOption;
-                        onOptionSelected?.call(selectedOption);
-                      }
-                    }
-                    : onTap,
-            keyboardType: keyboardType,
-            inputFormatters:
-                keyboardType == TextInputType.numberWithOptions(decimal: true)
-                    ? [FilteringTextInputFormatter.allow(RegExp(r'[\d.-]'))]
-                    : null,
-            decoration: InputDecoration(
-              labelText: label,
-              labelStyle: TextStyle(color: Colors.blueGrey.shade700),
-              suffix: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (suffixIcon != null)
-                    Icon(suffixIcon, color: Colors.blueGrey),
-                  if (suffixIcon != null && suffixText != null)
-                    const SizedBox(width: 4),
-                  if (suffixText != null)
-                    Text(
-                      suffixText,
-                      style: const TextStyle(
-                        color: Colors.black87,
-                        fontSize: 16,
-                      ),
-                    ),
-                ],
-              ),
-              border: const UnderlineInputBorder(
-                borderSide: BorderSide(color: Colors.blueGrey),
-              ),
-              enabledBorder: UnderlineInputBorder(
-                borderSide: BorderSide(color: Colors.blueGrey.shade300),
-              ),
-              focusedBorder: const UnderlineInputBorder(
-                borderSide: BorderSide(color: Colors.blue, width: 2),
-              ),
-            ),
-            style: const TextStyle(color: Colors.black87, fontSize: 16),
+      child: TextField(
+        controller: controller,
+        readOnly: readOnly,
+        onTap: onTap,
+        keyboardType: keyboardType,
+        inputFormatters:
+            keyboardType == const TextInputType.numberWithOptions(decimal: true)
+                ? [FilteringTextInputFormatter.allow(RegExp(r'[\d.-]'))]
+                : null,
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: TextStyle(color: Colors.blueGrey.shade700),
+          suffixIcon:
+              suffixIcon != null
+                  ? IconButton(
+                    icon: Icon(suffixIcon, color: Colors.blueGrey),
+                    onPressed: onTap,
+                  )
+                  : (suffixText != null
+                      ? Padding(
+                        padding: const EdgeInsets.only(right: 8.0, top: 14),
+                        child: Text(
+                          suffixText,
+                          style: const TextStyle(
+                            color: Colors.black87,
+                            fontSize: 16,
+                          ),
+                        ),
+                      )
+                      : null),
+          border: const UnderlineInputBorder(),
+          enabledBorder: UnderlineInputBorder(
+            borderSide: BorderSide(color: Colors.blueGrey.shade300),
           ),
-        ],
+          focusedBorder: const UnderlineInputBorder(
+            borderSide: BorderSide(color: Colors.blue, width: 2),
+          ),
+        ),
+        style: const TextStyle(color: Colors.black87, fontSize: 16),
+      ),
+    );
+  }
+
+  // ===== โรคที่ติด: พิมพ์ได้ + ขณะโหลดโชว์สปินเนอร์ + ไอคอนลิสต์เปิด popup (มีค้นหา) =====
+  Widget _buildDiseaseFieldHybrid() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: TextField(
+        controller: _diseaseController,
+        autofocus: false, // กันคีย์บอร์ดเด้งทันทีตอนเปิดหน้า
+        decoration: InputDecoration(
+          labelText: 'โรคที่ติด',
+          labelStyle: TextStyle(color: Colors.blueGrey.shade700),
+          suffixIcon:
+              _loadingDiseases
+                  ? const Padding(
+                    padding: EdgeInsets.all(12.0),
+                    child: SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  )
+                  : IconButton(
+                    icon: const Icon(
+                      Icons.format_list_bulleted,
+                      color: Colors.blueGrey,
+                    ),
+                    onPressed: () async {
+                      if (_diseaseOptions.isEmpty) {
+                        _showSnackBar('ยังไม่มีรายการโรคจากฐานข้อมูล');
+                        return;
+                      }
+                      FocusScope.of(context).unfocus(); // ปิดคีย์บอร์ดก่อน
+                      final selected = await _showDiseasePickerWithSearch();
+                      if (selected != null) {
+                        setState(() => _diseaseController.text = selected);
+                      }
+                    },
+                  ),
+          border: const UnderlineInputBorder(),
+          enabledBorder: UnderlineInputBorder(
+            borderSide: BorderSide(color: Colors.blueGrey.shade300),
+          ),
+          focusedBorder: const UnderlineInputBorder(
+            borderSide: BorderSide(color: Colors.blue, width: 2),
+          ),
+        ),
+        style: const TextStyle(color: Colors.black87, fontSize: 16),
       ),
     );
   }
@@ -316,17 +473,11 @@ class _AddDataScreenState extends State<AddDataScreen> {
                           label: 'ชื่อ',
                           controller: _nameController,
                         ),
-                        _buildInputField(
-                          label: 'โรคที่ติด',
-                          controller: _diseaseController,
-                          suffixIcon: Icons.format_list_bulleted,
-                          options: _diseaseOptions,
-                          onOptionSelected: (newValue) {
-                            setState(() {
-                              _diseaseController.text = newValue;
-                            });
-                          },
-                        ),
+
+                        // ✅ โรคที่ติด: พิมพ์ได้ + Popup มีค้นหา
+                        _buildDiseaseFieldHybrid(),
+
+                        // วันที่
                         _buildInputField(
                           label: 'วันที่ติด',
                           controller: _startDateController,
@@ -344,24 +495,50 @@ class _AddDataScreenState extends State<AddDataScreen> {
                               () =>
                                   _selectDate(context, _healingDateController),
                         ),
+
                         _buildInputField(
                           label: 'เบอร์',
                           controller: _phoneNumberController,
+                          keyboardType: TextInputType.phone,
                         ),
+
+                        // ระดับความอันตราย: เหมือนเดิม (แตะช่อง/ไอคอนเพื่อเปิดลิสต์)
                         _buildInputField(
                           label: 'ระดับความอันตราย',
-                          controller: TextEditingController(
-                            text: _selectedDangerLevel,
-                          ),
+                          controller: _dangerLevelController,
                           readOnly: true,
                           suffixIcon: Icons.format_list_bulleted,
-                          options: _dangerLevelOptions,
-                          onOptionSelected: (newValue) {
-                            setState(() {
-                              _selectedDangerLevel = newValue;
-                            });
+                          onTap: () async {
+                            final selected = await showDialog<String>(
+                              context: context,
+                              builder: (BuildContext dialogContext) {
+                                return SimpleDialog(
+                                  title: const Text('เลือกระดับความอันตราย'),
+                                  children:
+                                      _dangerLevelOptions
+                                          .map(
+                                            (e) => SimpleDialogOption(
+                                              onPressed:
+                                                  () => Navigator.pop(
+                                                    dialogContext,
+                                                    e,
+                                                  ),
+                                              child: Text(e),
+                                            ),
+                                          )
+                                          .toList(),
+                                );
+                              },
+                            );
+                            if (selected != null) {
+                              setState(() {
+                                _selectedDangerLevel = selected;
+                                _dangerLevelController.text = selected;
+                              });
+                            }
                           },
                         ),
+
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
@@ -373,7 +550,7 @@ class _AddDataScreenState extends State<AddDataScreen> {
                                     label: 'ละติจูด',
                                     controller: _latitudeController,
                                     keyboardType:
-                                        TextInputType.numberWithOptions(
+                                        const TextInputType.numberWithOptions(
                                           decimal: true,
                                         ),
                                   ),
@@ -381,7 +558,7 @@ class _AddDataScreenState extends State<AddDataScreen> {
                                     label: 'ลองจิจูด',
                                     controller: _longitudeController,
                                     keyboardType:
-                                        TextInputType.numberWithOptions(
+                                        const TextInputType.numberWithOptions(
                                           decimal: true,
                                         ),
                                   ),
@@ -399,20 +576,23 @@ class _AddDataScreenState extends State<AddDataScreen> {
                                     size: 70,
                                   ),
                                   onPressed: () {
-                                    // Logic to get location can be here, but for this case,
-                                    // the location is passed directly from MapScreen.
-                                    // This button is not used to get the location in this flow.
+                                    /* ตำแหน่งถูกส่งมาจาก MapScreen อยู่แล้ว */
                                   },
                                 ),
                               ),
                             ),
                           ],
                         ),
+
                         _buildInputField(
                           label: 'ระยะอันตราย',
                           controller: _dangerRangeController,
                           suffixText: 'เมตร',
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
                         ),
+
                         const SizedBox(height: 15),
                         TextField(
                           controller: _descriptionController,
@@ -422,9 +602,7 @@ class _AddDataScreenState extends State<AddDataScreen> {
                             labelStyle: TextStyle(
                               color: Colors.blueGrey.shade700,
                             ),
-                            border: const OutlineInputBorder(
-                              borderSide: BorderSide(color: Colors.blueGrey),
-                            ),
+                            border: const OutlineInputBorder(),
                             enabledBorder: OutlineInputBorder(
                               borderSide: BorderSide(
                                 color: Colors.blueGrey.shade300,
