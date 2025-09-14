@@ -12,6 +12,7 @@ import 'history_screen.dart';
 import 'add_data_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart'; // << เพิ่ม
 
 class MapScreen extends StatefulWidget {
   final int? userId;
@@ -27,10 +28,13 @@ class MapScreen extends StatefulWidget {
 class _MapScreenState extends State<MapScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final Completer<GoogleMapController> _controller = Completer();
+  bool _usedInitialTarget = false;
   Map<String, dynamic>? userData;
   int? userId;
   LatLng? _center;
   bool _isLoading = true;
+
+  final _secure = const FlutterSecureStorage(); // << เพิ่ม
 
   List<dynamic> _allPatients = [];
   final Set<Marker> _patientMarkers = {};
@@ -54,7 +58,7 @@ class _MapScreenState extends State<MapScreen> {
   int? _selectedPatientId;
 
   bool _isBottomSheetVisible = false;
-
+  bool _searchExpanded = false;
   String _countdownString = '0d 0h 0m 0s';
   Timer? _timer;
 
@@ -120,9 +124,6 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
-  /// ⭐ เช็กว่าหายแล้วหรือยัง
-  /// - ถ้าวันที่เป็น 'yyyy-MM-dd' → ถือว่าหายตั้งแต่ 00:00 ของวันนั้น (เปิดแอปในวันนั้นจะไม่แสดง)
-  /// - ถ้ามีเวลา → เทียบเวลาแบบตรงตัว
   bool _isRecovered(String? recoveryDateStr) {
     if (recoveryDateStr == null) return false;
 
@@ -133,7 +134,6 @@ class _MapScreenState extends State<MapScreen> {
     if (dt == null) return false;
 
     if (s.length == 10) {
-      // yyyy-MM-dd
       dt = DateTime(dt.year, dt.month, dt.day, 0, 0, 0);
     }
 
@@ -142,129 +142,127 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   void _applyFilters() {
-    final filteredPatients = _allPatients.where((patient) {
-      final isDiseaseMatch =
-          _activeFilters['disease'] == 'ทั้งหมด' ||
-          (patient['pat_epidemic']?.toString() ?? '') ==
-              _activeFilters['disease'];
+    final filteredPatients =
+        _allPatients.where((patient) {
+          final isDiseaseMatch =
+              _activeFilters['disease'] == 'ทั้งหมด' ||
+              (patient['pat_epidemic']?.toString() ?? '') ==
+                  _activeFilters['disease'];
 
-      final isDangerMatch =
-          _activeFilters['danger'] == 'ทั้งหมด' ||
-          (patient['pat_danger_level']?.toString() ?? '') ==
-              _activeFilters['danger'];
+          final isDangerMatch =
+              _activeFilters['danger'] == 'ทั้งหมด' ||
+              (patient['pat_danger_level']?.toString() ?? '') ==
+                  _activeFilters['danger'];
 
-      // ====== กรองวันที่ติดเชื้อ ======
-      bool isInfectionDateMatch = true;
-      if (_activeFilters['infectedDate'] != 'ทั้งหมด') {
-        final infectedDateString =
-            patient['pat_infection_date']?.toString();
-        if (infectedDateString != null && infectedDateString.isNotEmpty) {
-          final infectedDate = DateTime.tryParse(infectedDateString);
-          if (infectedDate != null) {
-            final now = DateTime.now();
-            final today = DateTime(now.year, now.month, now.day);
-            final patientDate = DateTime(
-              infectedDate.year,
-              infectedDate.month,
-              infectedDate.day,
-            );
+          bool isInfectionDateMatch = true;
+          if (_activeFilters['infectedDate'] != 'ทั้งหมด') {
+            final infectedDateString =
+                patient['pat_infection_date']?.toString();
+            if (infectedDateString != null && infectedDateString.isNotEmpty) {
+              final infectedDate = DateTime.tryParse(infectedDateString);
+              if (infectedDate != null) {
+                final now = DateTime.now();
+                final today = DateTime(now.year, now.month, now.day);
+                final patientDate = DateTime(
+                  infectedDate.year,
+                  infectedDate.month,
+                  infectedDate.day,
+                );
 
-            switch (_activeFilters['infectedDate']) {
-              case 'วันนี้':
-                isInfectionDateMatch = patientDate.isAtSameMomentAs(today);
-                break;
-              case 'สัปดาห์นี้':
-                final startOfWeek =
-                    today.subtract(Duration(days: today.weekday - 1));
-                final endOfWeek =
-                    startOfWeek.add(const Duration(days: 7));
-                isInfectionDateMatch =
-                    (patientDate.isAfter(startOfWeek) &&
+                switch (_activeFilters['infectedDate']) {
+                  case 'วันนี้':
+                    isInfectionDateMatch = patientDate.isAtSameMomentAs(today);
+                    break;
+                  case 'สัปดาห์นี้':
+                    final startOfWeek = today.subtract(
+                      Duration(days: today.weekday - 1),
+                    );
+                    final endOfWeek = startOfWeek.add(const Duration(days: 7));
+                    isInfectionDateMatch =
+                        (patientDate.isAfter(startOfWeek) &&
                             patientDate.isBefore(endOfWeek)) ||
-                    patientDate.isAtSameMomentAs(startOfWeek);
-                break;
-              case 'เดือนนี้':
-                final startOfMonth = DateTime(now.year, now.month, 1);
-                final endOfMonth = DateTime(now.year, now.month + 1, 1);
-                isInfectionDateMatch =
-                    (patientDate.isAfter(startOfMonth) &&
+                        patientDate.isAtSameMomentAs(startOfWeek);
+                    break;
+                  case 'เดือนนี้':
+                    final startOfMonth = DateTime(now.year, now.month, 1);
+                    final endOfMonth = DateTime(now.year, now.month + 1, 1);
+                    isInfectionDateMatch =
+                        (patientDate.isAfter(startOfMonth) &&
                             patientDate.isBefore(endOfMonth)) ||
-                    patientDate.isAtSameMomentAs(startOfMonth);
-                break;
-              case 'ปีนี้':
-                final startOfYear = DateTime(now.year, 1, 1);
-                final endOfYear = DateTime(now.year + 1, 1, 1);
-                isInfectionDateMatch =
-                    (patientDate.isAfter(startOfYear) &&
+                        patientDate.isAtSameMomentAs(startOfMonth);
+                    break;
+                  case 'ปีนี้':
+                    final startOfYear = DateTime(now.year, 1, 1);
+                    final endOfYear = DateTime(now.year + 1, 1, 1);
+                    isInfectionDateMatch =
+                        (patientDate.isAfter(startOfYear) &&
                             patientDate.isBefore(endOfYear)) ||
-                    patientDate.isAtSameMomentAs(startOfYear);
-                break;
+                        patientDate.isAtSameMomentAs(startOfYear);
+                    break;
+                }
+              }
             }
           }
-        }
-      }
 
-      // ====== กรองวันที่หาย (ถ้าผู้ใช้เลือกในฟิลเตอร์) ======
-      bool isRecoveryDateMatch = true;
-      if (_activeFilters['recoveryDate'] != 'ทั้งหมด') {
-        final recoveryDateString =
-            patient['pat_recovery_date']?.toString();
-        if (recoveryDateString != null && recoveryDateString.isNotEmpty) {
-          final recoveryDate = DateTime.tryParse(recoveryDateString);
-          if (recoveryDate != null) {
-            final now = DateTime.now();
-            final today = DateTime(now.year, now.month, now.day);
-            final patientDate = DateTime(
-              recoveryDate.year,
-              recoveryDate.month,
-              recoveryDate.day,
-            );
+          bool isRecoveryDateMatch = true;
+          if (_activeFilters['recoveryDate'] != 'ทั้งหมด') {
+            final recoveryDateString = patient['pat_recovery_date']?.toString();
+            if (recoveryDateString != null && recoveryDateString.isNotEmpty) {
+              final recoveryDate = DateTime.tryParse(recoveryDateString);
+              if (recoveryDate != null) {
+                final now = DateTime.now();
+                final today = DateTime(now.year, now.month, now.day);
+                final patientDate = DateTime(
+                  recoveryDate.year,
+                  recoveryDate.month,
+                  recoveryDate.day,
+                );
 
-            switch (_activeFilters['recoveryDate']) {
-              case 'วันนี้':
-                isRecoveryDateMatch = patientDate.isAtSameMomentAs(today);
-                break;
-              case 'สัปดาห์นี้':
-                final startOfWeek =
-                    today.subtract(Duration(days: today.weekday - 1));
-                final endOfWeek =
-                    startOfWeek.add(const Duration(days: 7));
-                isRecoveryDateMatch =
-                    (patientDate.isAfter(startOfWeek) &&
+                switch (_activeFilters['recoveryDate']) {
+                  case 'วันนี้':
+                    isRecoveryDateMatch = patientDate.isAtSameMomentAs(today);
+                    break;
+                  case 'สัปดาห์นี้':
+                    final startOfWeek = today.subtract(
+                      Duration(days: today.weekday - 1),
+                    );
+                    final endOfWeek = startOfWeek.add(const Duration(days: 7));
+                    isRecoveryDateMatch =
+                        (patientDate.isAfter(startOfWeek) &&
                             patientDate.isBefore(endOfWeek)) ||
-                    patientDate.isAtSameMomentAs(startOfWeek);
-                break;
-              case 'เดือนนี้':
-                final startOfMonth = DateTime(now.year, now.month, 1);
-                final endOfMonth = DateTime(now.year, now.month + 1, 1);
-                isRecoveryDateMatch =
-                    (patientDate.isAfter(startOfMonth) &&
+                        patientDate.isAtSameMomentAs(startOfWeek);
+                    break;
+                  case 'เดือนนี้':
+                    final startOfMonth = DateTime(now.year, now.month, 1);
+                    final endOfMonth = DateTime(now.year, now.month + 1, 1);
+                    isRecoveryDateMatch =
+                        (patientDate.isAfter(startOfMonth) &&
                             patientDate.isBefore(endOfMonth)) ||
-                    patientDate.isAtSameMomentAs(startOfMonth);
-                break;
-              case 'ปีนี้':
-                final startOfYear = DateTime(now.year, 1, 1);
-                final endOfYear = DateTime(now.year + 1, 1, 1);
-                isRecoveryDateMatch =
-                    (patientDate.isAfter(startOfYear) &&
+                        patientDate.isAtSameMomentAs(startOfMonth);
+                    break;
+                  case 'ปีนี้':
+                    final startOfYear = DateTime(now.year, 1, 1);
+                    final endOfYear = DateTime(now.year + 1, 1, 1);
+                    isRecoveryDateMatch =
+                        (patientDate.isAfter(startOfYear) &&
                             patientDate.isBefore(endOfYear)) ||
-                    patientDate.isAtSameMomentAs(startOfYear);
-                break;
+                        patientDate.isAtSameMomentAs(startOfYear);
+                    break;
+                }
+              }
             }
           }
-        }
-      }
 
-      // ❗ ตัดผู้ที่ "หายแล้ว" ออกเสมอ
-      final recovered =
-          _isRecovered(patient['pat_recovery_date']?.toString());
+          final recovered = _isRecovered(
+            patient['pat_recovery_date']?.toString(),
+          );
 
-      return isDiseaseMatch &&
-          isDangerMatch &&
-          isInfectionDateMatch &&
-          isRecoveryDateMatch &&
-          !recovered;
-    }).toList();
+          return isDiseaseMatch &&
+              isDangerMatch &&
+              isInfectionDateMatch &&
+              isRecoveryDateMatch &&
+              !recovered;
+        }).toList();
 
     _addMarkersAndCirclesFromData(filteredPatients);
   }
@@ -277,7 +275,6 @@ class _MapScreenState extends State<MapScreen> {
 
     for (var patient in patientData) {
       try {
-        // กันพลาดอีกชั้น: ถ้าหายแล้ว ไม่ต้องสร้างมาร์กเกอร์
         if (_isRecovered(patient['pat_recovery_date']?.toString())) {
           continue;
         }
@@ -287,11 +284,9 @@ class _MapScreenState extends State<MapScreen> {
         if (patId == -1) continue;
 
         final double lat =
-            double.tryParse(patient['pat_latitude']?.toString() ?? '') ??
-                0.0;
+            double.tryParse(patient['pat_latitude']?.toString() ?? '') ?? 0.0;
         final double lng =
-            double.tryParse(patient['pat_longitude']?.toString() ?? '') ??
-                0.0;
+            double.tryParse(patient['pat_longitude']?.toString() ?? '') ?? 0.0;
         final String name = patient['pat_name']?.toString() ?? 'ไม่ระบุ';
         final String danger =
             patient['pat_danger_level']?.toString() ?? 'ไม่ระบุ';
@@ -299,7 +294,7 @@ class _MapScreenState extends State<MapScreen> {
             patient['pat_description']?.toString() ?? 'ไม่มีคำอธิบาย';
         final double dangerRange =
             double.tryParse(patient['pat_danger_range']?.toString() ?? '0') ??
-                0;
+            0;
         final String infectedDisease =
             patient['pat_epidemic']?.toString() ?? 'ไม่ระบุ';
         final String recoveryDate =
@@ -395,17 +390,18 @@ class _MapScreenState extends State<MapScreen> {
     try {
       final recoveryDateTime = DateTime.parse(recoveryDate);
       _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-        final remainingTime =
-            recoveryDateTime.difference(DateTime.now());
+        final remainingTime = recoveryDateTime.difference(DateTime.now());
         if (remainingTime.isNegative) {
           timer.cancel();
           setState(() {
             _countdownString = 'หายแล้ว';
             if (_selectedPatientId != null) {
-              _patientMarkers.removeWhere((m) =>
-                  m.markerId.value == 'patient_${_selectedPatientId!}');
-              _dangerCircles.removeWhere((c) =>
-                  c.circleId.value == 'danger_zone_${_selectedPatientId!}');
+              _patientMarkers.removeWhere(
+                (m) => m.markerId.value == 'patient_${_selectedPatientId!}',
+              );
+              _dangerCircles.removeWhere(
+                (c) => c.circleId.value == 'danger_zone_${_selectedPatientId!}',
+              );
             }
             _isBottomSheetVisible = false;
           });
@@ -415,8 +411,7 @@ class _MapScreenState extends State<MapScreen> {
           final minutes = remainingTime.inMinutes % 60;
           final seconds = remainingTime.inSeconds % 60;
           setState(() {
-            _countdownString =
-                '${days}d ${hours}h ${minutes}m ${seconds}s';
+            _countdownString = '${days}d ${hours}h ${minutes}m ${seconds}s';
           });
         }
       });
@@ -443,6 +438,33 @@ class _MapScreenState extends State<MapScreen> {
     _fetchUserData();
   }
 
+  // ===== Logout แบบชัวร์: ล้าง prefs + secure storage + เคลียร์สแต็ก + ปิด auto-login =====
+  Future<void> _logout() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('userId');
+
+      await _secure.delete(key: 'remember_me');
+      await _secure.delete(key: 'login_username');
+      await _secure.delete(key: 'login_password');
+      await _secure.delete(key: 'session_cookie'); // ถ้าเคยใช้
+    } catch (e) {
+      debugPrint('Logout error: $e');
+    }
+
+    if (!mounted) return;
+
+    Navigator.pushAndRemoveUntil(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (_, __, ___) => const AuthScreen(bypassAutoLogin: true),
+        transitionDuration: Duration.zero,
+        reverseTransitionDuration: Duration.zero,
+      ),
+      (route) => false,
+    );
+  }
+
   Future<void> _getInitialLocation() async {
     try {
       await _determinePosition();
@@ -459,8 +481,7 @@ class _MapScreenState extends State<MapScreen> {
       final locations = await locationFromAddress(query);
       if (locations.isNotEmpty) {
         final loc = locations.first;
-        final LatLng target =
-            LatLng(loc.latitude, loc.longitude);
+        final LatLng target = LatLng(loc.latitude, loc.longitude);
 
         setState(() {
           _userMarkers.clear();
@@ -469,8 +490,7 @@ class _MapScreenState extends State<MapScreen> {
 
         if (_controller.isCompleted) {
           final controller = await _controller.future;
-          controller.animateCamera(
-              CameraUpdate.newLatLngZoom(target, 15));
+          controller.animateCamera(CameraUpdate.newLatLngZoom(target, 15));
         }
       } else {
         _showSnackBar("ไม่พบสถานที่");
@@ -480,7 +500,11 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
-  Future<void> _determinePosition() async {
+  void _safeSetDefaultCenter() {
+    _center ??= const LatLng(13.7563, 100.5018); // Bangkok fallback
+  }
+
+  Future<void> _determinePosition({bool forceCurrent = false}) async {
     bool serviceEnabled;
     LocationPermission permission;
 
@@ -489,6 +513,7 @@ class _MapScreenState extends State<MapScreen> {
       _showSnackBar('Location services are disabled. Please enable them.');
       if (mounted && _center == null) {
         setState(() {
+          _safeSetDefaultCenter();
           _addDefaultMarker(_center!);
         });
       }
@@ -500,9 +525,11 @@ class _MapScreenState extends State<MapScreen> {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
         _showSnackBar(
-            'Location permissions are denied. Cannot show your location.');
+          'Location permissions are denied. Cannot show your location.',
+        );
         if (mounted && _center == null) {
           setState(() {
+            _safeSetDefaultCenter();
             _addDefaultMarker(_center!);
           });
         }
@@ -512,9 +539,11 @@ class _MapScreenState extends State<MapScreen> {
 
     if (permission == LocationPermission.deniedForever) {
       _showSnackBar(
-          'Location permissions are permanently denied. Please enable them from settings.');
+        'Location permissions are permanently denied. Please enable them from settings.',
+      );
       if (mounted && _center == null) {
         setState(() {
+          _safeSetDefaultCenter();
           _addDefaultMarker(_center!);
         });
       }
@@ -523,25 +552,35 @@ class _MapScreenState extends State<MapScreen> {
 
     try {
       final pos = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high);
-      if (mounted) {
-        setState(() {
-          if (widget.latitude == null) {
-            _center = LatLng(pos.latitude, pos.longitude);
-          } else {
-            _center = LatLng(widget.latitude!, widget.longitude!);
-          }
-        });
-      }
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        // ใช้พิกัดจาก History แค่ครั้งแรก ถ้าไม่มี forceCurrent
+        if (!forceCurrent &&
+            !_usedInitialTarget &&
+            widget.latitude != null &&
+            widget.longitude != null) {
+          _center = LatLng(widget.latitude!, widget.longitude!);
+          _usedInitialTarget = true; // consume แล้ว
+        } else {
+          // ปกติหรือกดปุ่มตำแหน่งปัจจุบัน ให้ใช้ตำแหน่งจริงของผู้ใช้
+          _center = LatLng(pos.latitude, pos.longitude);
+        }
+      });
+
       if (_controller.isCompleted && _center != null) {
         final mapCtrl = await _controller.future;
-        mapCtrl.animateCamera(CameraUpdate.newLatLng(_center!));
+        await mapCtrl.animateCamera(CameraUpdate.newLatLng(_center!));
       }
     } catch (e) {
       debugPrint('Failed to get your current location: $e');
       _showSnackBar('Failed to get your current location.');
       if (mounted && _center == null) {
         setState(() {
+          _safeSetDefaultCenter();
           _addDefaultMarker(_center!);
         });
       }
@@ -553,13 +592,6 @@ class _MapScreenState extends State<MapScreen> {
       _isBottomSheetVisible = false;
       _timer?.cancel();
       const markerId = MarkerId('current_location');
-      _userMarkers.removeWhere((m) => m.markerId == markerId);
-      _userMarkers.add(
-        const Marker(
-          markerId: markerId,
-          position: LatLng(0, 0), // will be replaced below
-        ),
-      );
       _userMarkers.removeWhere((m) => m.markerId == markerId);
       _userMarkers.add(
         Marker(
@@ -590,8 +622,7 @@ class _MapScreenState extends State<MapScreen> {
           _showMarkerDetailsDialog(markerId);
         },
       ),
-      icon: BitmapDescriptor.defaultMarkerWithHue(
-          BitmapDescriptor.hueBlue),
+      icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
       onTap: _hideBottomSheet,
     );
     setState(() {
@@ -632,22 +663,23 @@ class _MapScreenState extends State<MapScreen> {
     setState(() {
       _userMarkers.removeWhere((marker) => marker.markerId == markerId);
     });
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('Marker has been removed.')));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Marker has been removed.')));
   }
 
   void _showSnackBar(String message) {
     if (mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(message)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     if (_isLoading || _center == null) {
-      return const Scaffold(
-          body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     return Scaffold(
       key: _scaffoldKey,
@@ -656,13 +688,14 @@ class _MapScreenState extends State<MapScreen> {
         children: [
           GoogleMap(
             myLocationEnabled: false,
-            initialCameraPosition:
-                CameraPosition(target: _center!, zoom: 15),
+            initialCameraPosition: CameraPosition(target: _center!, zoom: 15),
             markers: _patientMarkers.union(_userMarkers),
             circles: _dangerCircles,
             compassEnabled: false,
             onMapCreated: (controller) {
-              _controller.complete(controller);
+              if (!_controller.isCompleted) {
+                _controller.complete(controller);
+              }
             },
             onLongPress: _addMarker,
             onTap: (_) {
@@ -698,23 +731,22 @@ class _MapScreenState extends State<MapScreen> {
           children: [
             LayoutBuilder(
               builder: (BuildContext context, BoxConstraints constraints) {
-                double headerHeight =
-                    MediaQuery.of(context).size.height * 0.25;
+                double headerHeight = MediaQuery.of(context).size.height * 0.25;
                 final double minContentHeight = 120.0;
                 final double minHeaderHeight =
                     MediaQuery.of(context).padding.top + minContentHeight;
                 final double maxHeaderHeight =
                     MediaQuery.of(context).size.height * 0.35;
                 headerHeight =
-                    headerHeight.clamp(minHeaderHeight, maxHeaderHeight).toDouble();
+                    headerHeight
+                        .clamp(minHeaderHeight, maxHeaderHeight)
+                        .toDouble();
                 return SizedBox(
                   height: headerHeight,
                   child: DrawerHeader(
-                    decoration:
-                        BoxDecoration(color: Colors.blue.shade900),
+                    decoration: BoxDecoration(color: Colors.blue.shade900),
                     margin: EdgeInsets.zero,
-                    padding:
-                        const EdgeInsets.fromLTRB(16, 8, 8, 16),
+                    padding: const EdgeInsets.fromLTRB(16, 8, 8, 16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -737,20 +769,22 @@ class _MapScreenState extends State<MapScreen> {
                         const Spacer(),
                         CircleAvatar(
                           radius: 30,
-                          backgroundImage: (userData != null &&
-                                  userData!['stf_avatar'] != null)
-                              ? NetworkImage(
-                                  "http://10.0.2.2/api/${userData!['stf_avatar']}",
-                                )
-                              : null,
-                          child: (userData == null ||
-                                  userData!['stf_avatar'] == null)
-                              ? const Icon(
-                                  Icons.person,
-                                  size: 40,
-                                  color: Colors.grey,
-                                )
-                              : null,
+                          backgroundImage:
+                              (userData != null &&
+                                      userData!['stf_avatar'] != null)
+                                  ? NetworkImage(
+                                    "http://10.0.2.2/api/${userData!['stf_avatar']}",
+                                  )
+                                  : null,
+                          child:
+                              (userData == null ||
+                                      userData!['stf_avatar'] == null)
+                                  ? const Icon(
+                                    Icons.person,
+                                    size: 40,
+                                    color: Colors.grey,
+                                  )
+                                  : null,
                         ),
                         const SizedBox(height: 6),
                         Text(
@@ -778,13 +812,13 @@ class _MapScreenState extends State<MapScreen> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) =>
-                          ProfileScreen(userId: userId!),
+                      builder: (context) => ProfileScreen(userId: userId!),
                     ),
                   );
                 } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('ไม่พบ userId')));
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(const SnackBar(content: Text('ไม่พบ userId')));
                 }
               },
             ),
@@ -794,11 +828,11 @@ class _MapScreenState extends State<MapScreen> {
               onTap: () async {
                 final selectedFilters =
                     await Navigator.push<Map<String, dynamic>>(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const FilterScreen(),
-                  ),
-                );
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const FilterScreen(),
+                      ),
+                    );
                 if (selectedFilters != null) {
                   setState(() {
                     _activeFilters = selectedFilters;
@@ -829,10 +863,11 @@ class _MapScreenState extends State<MapScreen> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => AddDataScreen(
-                        latitude: _lastMarkerLat!,
-                        longitude: _lastMarkerLng!,
-                      ),
+                      builder:
+                          (context) => AddDataScreen(
+                            latitude: _lastMarkerLat!,
+                            longitude: _lastMarkerLng!,
+                          ),
                     ),
                   );
                 } else if (_center != null) {
@@ -840,10 +875,11 @@ class _MapScreenState extends State<MapScreen> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => AddDataScreen(
-                        latitude: _center!.latitude,
-                        longitude: _center!.longitude,
-                      ),
+                      builder:
+                          (context) => AddDataScreen(
+                            latitude: _center!.latitude,
+                            longitude: _center!.longitude,
+                          ),
                     ),
                   );
                 } else {
@@ -854,17 +890,7 @@ class _MapScreenState extends State<MapScreen> {
             DrawerListItem(
               icon: Icons.logout,
               title: 'ออกจากระบบ',
-              onTap: () {
-                Navigator.pushReplacement(
-                  context,
-                  PageRouteBuilder(
-                    pageBuilder: (context, a1, a2) =>
-                        const AuthScreen(),
-                    transitionDuration: Duration.zero,
-                    reverseTransitionDuration: Duration.zero,
-                  ),
-                );
-              },
+              onTap: _logout, // << ใช้ฟังก์ชันใหม่
             ),
           ],
         ),
@@ -872,173 +898,248 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
-  Widget _buildTopBar() {
-    return Positioned(
-      top: 40,
-      left: 16,
-      right: 16,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        height: 50,
-        decoration: BoxDecoration(
-          color: Colors.blue,
-          borderRadius: BorderRadius.circular(25),
-        ),
-        child: Row(
-          children: [
-            IconButton(
-              icon: const Icon(Icons.menu, color: Colors.white),
-              onPressed: () => _scaffoldKey.currentState?.openDrawer(),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: TextField(
-                controller: _searchController,
-                style: const TextStyle(color: Colors.white),
-                cursorColor: Colors.white,
-                decoration: const InputDecoration(
-                  hintText: "Search",
-                  hintStyle: TextStyle(color: Colors.white70),
-                  border: InputBorder.none,
-                ),
-                onSubmitted: (value) {
-                  if (value.isNotEmpty) {
-                    _searchLocation(value);
-                  }
-                },
-              ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.search, color: Colors.white),
-              onPressed: () {
-                final query = _searchController.text.trim();
-                if (query.isNotEmpty) {
-                  _searchLocation(query);
-                }
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+Widget _buildTopBar() {
+  final double topInset = MediaQuery.of(context).padding.top;
 
-  Widget _buildFloatingButtons() {
-    return Positioned(
-      top: 110,
-      right: 16,
-      child: Column(
-        children: [
-          FloatingActionButton(
-            mini: true,
-            heroTag: "myLocationBtn",
-            onPressed: _determinePosition,
-            child: const Icon(Icons.my_location),
-          ),
-          const SizedBox(height: 8),
-          FloatingActionButton(
-            mini: true,
-            heroTag: "zoomInBtn",
-            onPressed: () async {
-              if (_controller.isCompleted) {
-                final controller = await _controller.future;
-                controller.animateCamera(CameraUpdate.zoomIn());
-              }
-            },
-            child: const Icon(Icons.center_focus_strong),
-          ),
-          const SizedBox(height: 8),
-          FloatingActionButton(
-            mini: true,
-            heroTag: "compassBtn",
-            onPressed: () async {
-              try {
-                if (_controller.isCompleted &&
-                    _currentCameraPosition != null) {
-                  final controller = await _controller.future;
-                  controller.animateCamera(
-                    CameraUpdate.newCameraPosition(
-                      CameraPosition(
-                        target: _currentCameraPosition!.target,
-                        zoom: _currentCameraPosition!.zoom,
-                        bearing: 0,
-                        tilt: _currentCameraPosition!.tilt,
-                      ),
-                    ),
-                  );
-                }
-              } catch (e) {
-                debugPrint("❌ Error resetting compass: $e");
-              }
-            },
-            child: const Icon(Icons.explore),
-          ),
+  return Positioned(
+    top: 0,
+    left: 0,
+    right: 0,
+    child: Container(
+      height: topInset + 96,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFF1C31FF), Color(0xFF006BFF)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
+        boxShadow: [
+          BoxShadow(color: Colors.black26, offset: Offset(0, 4), blurRadius: 16),
         ],
       ),
-    );
-  }
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              // ความกว้างเมื่อขยาย: ทั้งแถบ ลบพื้นที่ปุ่มเมนู + เว้นระยะ
+              final double expandedWidth = constraints.maxWidth - 48 - 12;
+
+              return Stack(
+                alignment: Alignment.center,
+                children: [
+                  // แถวพื้นฐาน: เมนูซ้าย + แว่นขวา (ตอนยุบ)
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.menu, color: Colors.white, size: 26),
+                        onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+                      ),
+                      const Spacer(),
+                      AnimatedOpacity(
+                        duration: const Duration(milliseconds: 180),
+                        opacity: _searchExpanded ? 0 : 1,
+                        child: IconButton(
+                          icon: const Icon(Icons.search, color: Colors.white, size: 26),
+                          onPressed: () => setState(() => _searchExpanded = true),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  // ช่องค้นหาแบบขยายจากขวา → ซ้าย
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: IgnorePointer(
+                      ignoring: !_searchExpanded,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 260),
+                        curve: Curves.easeInOut,
+                        width: _searchExpanded ? expandedWidth : 0,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        clipBehavior: Clip.hardEdge,
+                        child: _searchExpanded
+                            ? Row(
+                                children: [
+                                  const SizedBox(width: 10),
+                                  const Icon(Icons.search, color: Colors.black54),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: TextField(
+                                      controller: _searchController,
+                                      autofocus: true,
+                                      decoration: const InputDecoration(
+                                        hintText: 'Search',
+                                        border: InputBorder.none,
+                                        isDense: true,
+                                      ),
+                                      textInputAction: TextInputAction.search,
+                                      onSubmitted: (value) {
+                                        final q = value.trim();
+                                        if (q.isNotEmpty) _searchLocation(q);
+                                        setState(() => _searchExpanded = false);
+                                      },
+                                    ),
+                                  ),
+                                  IconButton(
+                                    tooltip: 'ค้นหา',
+                                    splashRadius: 18,
+                                    icon: const Icon(Icons.arrow_forward_rounded),
+                                    onPressed: () {
+                                      final q = _searchController.text.trim();
+                                      if (q.isNotEmpty) _searchLocation(q);
+                                      setState(() => _searchExpanded = false);
+                                    },
+                                  ),
+                                ],
+                              )
+                            : null,
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+
+
+ Widget _buildFloatingButtons() {
+  final double topInset = MediaQuery.of(context).padding.top;
+  return Positioned(
+    top: topInset + 130, // วางใต้ AppBar โค้ง
+    right: 16,
+    child: Column(
+      children: [
+        FloatingActionButton(
+          mini: true,
+          heroTag: "myLocationBtn",
+          onPressed: () => _determinePosition(forceCurrent: true),
+          child: const Icon(Icons.my_location),
+        ),
+        const SizedBox(height: 8),
+        FloatingActionButton(
+          mini: true,
+          heroTag: "zoomInBtn",
+          onPressed: () async {
+            if (_controller.isCompleted) {
+              final controller = await _controller.future;
+              controller.animateCamera(CameraUpdate.zoomIn());
+            }
+          },
+          child: const Icon(Icons.center_focus_strong),
+        ),
+        const SizedBox(height: 8),
+        FloatingActionButton(
+          mini: true,
+          heroTag: "compassBtn",
+          onPressed: () async {
+            try {
+              if (_controller.isCompleted && _currentCameraPosition != null) {
+                final controller = await _controller.future;
+                controller.animateCamera(
+                  CameraUpdate.newCameraPosition(
+                    CameraPosition(
+                      target: _currentCameraPosition!.target,
+                      zoom: _currentCameraPosition!.zoom,
+                      bearing: 0,
+                      tilt: _currentCameraPosition!.tilt,
+                    ),
+                  ),
+                );
+              }
+            } catch (e) {
+              debugPrint("❌ Error resetting compass: $e");
+            }
+          },
+          child: const Icon(Icons.explore),
+        ),
+      ],
+    ),
+  );
+}
+
 
   Widget _buildBottomSheet() {
     return DraggableScrollableSheet(
       initialChildSize: 0.3,
       minChildSize: 0.2,
       maxChildSize: 0.6,
-      builder: (context, scrollCtrl) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
-        ),
-        child: ListView(
-          controller: scrollCtrl,
-          padding: const EdgeInsets.all(16),
-          children: [
-            const Center(
-              child: Icon(Icons.drag_handle, color: Colors.grey),
+      builder:
+          (context, scrollCtrl) => Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
             ),
-            const SizedBox(height: 8),
-            Row(
+            child: ListView(
+              controller: scrollCtrl,
+              padding: const EdgeInsets.all(16),
               children: [
-                const Icon(Icons.location_on, color: Colors.red),
-                const SizedBox(width: 8),
-                Text(_bottomSheetTitle,
-                    style: const TextStyle(fontSize: 18)),
-                const Spacer(),
-                Text(_countdownString),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                const Text('ระดับความอันตราย: ',
-                    style: TextStyle(fontSize: 16)),
-                Text(
-                  _bottomSheetDanger,
-                  style: const TextStyle(fontSize: 16, color: Colors.red),
+                const Center(
+                  child: Icon(Icons.drag_handle, color: Colors.grey),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(Icons.location_on, color: Colors.red),
+                    const SizedBox(width: 8),
+                    Text(
+                      _bottomSheetTitle,
+                      style: const TextStyle(fontSize: 18),
+                    ),
+                    const Spacer(),
+                    Text(_countdownString),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Text(
+                      'ระดับความอันตราย: ',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                    Text(
+                      _bottomSheetDanger,
+                      style: const TextStyle(fontSize: 16, color: Colors.red),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Text('โรค: ', style: TextStyle(fontSize: 16)),
+                    Text(
+                      _bottomSheetDisease,
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  maxLines: 4,
+                  controller: TextEditingController(
+                    text: _bottomSheetDescription,
+                  ),
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    labelText: 'คำอธิบาย',
+                  ),
+                  readOnly: true,
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                const Text('โรค: ', style: TextStyle(fontSize: 16)),
-                Text(_bottomSheetDisease,
-                    style: const TextStyle(fontSize: 16)),
-              ],
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              maxLines: 4,
-              controller:
-                  TextEditingController(text: _bottomSheetDescription),
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                labelText: 'คำอธิบาย',
-              ),
-              readOnly: true,
-            ),
-          ],
-        ),
-      ),
+          ),
     );
   }
 }
