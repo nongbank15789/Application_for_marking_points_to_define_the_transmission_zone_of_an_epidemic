@@ -74,7 +74,9 @@ class _AuthScreenState extends State<AuthScreen> {
   // Auto-login แบบเงียบเมื่อเปิดจอ (ไม่ต้องแก้ backend)
   Future<void> _tryAutoLogin() async {
     if (!isLogin || !rememberMe) return;
-    if (loginUsernameController.text.isEmpty || loginPasswordController.text.isEmpty) return;
+    if (loginUsernameController.text.isEmpty ||
+        loginPasswordController.text.isEmpty)
+      return;
     await loginUser(silent: true);
   }
 
@@ -82,8 +84,14 @@ class _AuthScreenState extends State<AuthScreen> {
   Future<void> _persistLoginChoice() async {
     if (rememberMe) {
       await _secure.write(key: 'remember_me', value: '1');
-      await _secure.write(key: 'login_username', value: loginUsernameController.text);
-      await _secure.write(key: 'login_password', value: loginPasswordController.text);
+      await _secure.write(
+        key: 'login_username',
+        value: loginUsernameController.text,
+      );
+      await _secure.write(
+        key: 'login_password',
+        value: loginPasswordController.text,
+      );
     } else {
       await _secure.delete(key: 'remember_me');
       await _secure.delete(key: 'login_username');
@@ -97,8 +105,10 @@ class _AuthScreenState extends State<AuthScreen> {
 
     FocusScope.of(context).unfocus();
 
-    if (loginUsernameController.text.isEmpty || loginPasswordController.text.isEmpty) {
-      if (mounted && !silent) AppSnack.warn(context, 'กรุณากรอก Username และ Password');
+    if (loginUsernameController.text.isEmpty ||
+        loginPasswordController.text.isEmpty) {
+      if (mounted && !silent)
+        AppSnack.warn(context, 'กรุณากรอก Username และ Password');
       return;
     }
 
@@ -145,7 +155,10 @@ class _AuthScreenState extends State<AuthScreen> {
       } else {
         if (mounted && !silent) {
           final errorBody = json.decode(response.body);
-          AppSnack.error(context, 'เข้าสู่ระบบไม่สำเร็จ: ${errorBody['message']}');
+          AppSnack.error(
+            context,
+            'เข้าสู่ระบบไม่สำเร็จ: ${errorBody['message']}',
+          );
         }
       }
     } catch (e) {
@@ -199,7 +212,10 @@ class _AuthScreenState extends State<AuthScreen> {
       } else {
         if (mounted) {
           final errorBody = json.decode(response.body);
-          AppSnack.error(context, 'ลงทะเบียนไม่สำเร็จ: ${errorBody['message']}');
+          AppSnack.error(
+            context,
+            'ลงทะเบียนไม่สำเร็จ: ${errorBody['message']}',
+          );
         }
       }
     } catch (e) {
@@ -261,9 +277,10 @@ class _AuthScreenState extends State<AuthScreen> {
                 height: 280,
                 cardRadius: 36,
                 title: isLogin ? 'Log In' : 'Sign Up',
-                subtitle: isLogin
-                    ? 'Welcome back! Please enter your details to continue.'
-                    : 'Register to Start Your Exciting Learning Process',
+                subtitle:
+                    isLogin
+                        ? 'Welcome back! Please enter your details to continue.'
+                        : 'Register to Start Your Exciting Learning Process',
                 onBack: _busy ? null : () => Navigator.maybePop(context),
               ),
 
@@ -319,43 +336,64 @@ class _AuthScreenState extends State<AuthScreen> {
                       width: double.infinity,
                       height: 56,
                       child: ElevatedButton(
-                        onPressed: _busy
-                            ? null
-                            : () {
-                                if (isLogin) {
-                                  setState(() => _loginAV = AutovalidateMode.onUserInteraction);
-                                  if (_loginFormKey.currentState?.validate() ?? true) {
-                                    loginUser();
+                        onPressed:
+                            _busy
+                                ? null
+                                : () {
+                                  if (isLogin) {
+                                    setState(
+                                      () =>
+                                          _loginAV =
+                                              AutovalidateMode
+                                                  .onUserInteraction,
+                                    );
+                                    if (_loginFormKey.currentState
+                                            ?.validate() ??
+                                        true) {
+                                      loginUser();
+                                    }
+                                  } else {
+                                    setState(
+                                      () =>
+                                          _signupAV =
+                                              AutovalidateMode
+                                                  .onUserInteraction,
+                                    );
+                                    if (_signupFormKey.currentState
+                                            ?.validate() ??
+                                        false) {
+                                      registerUser();
+                                    }
                                   }
-                                } else {
-                                  setState(() => _signupAV = AutovalidateMode.onUserInteraction);
-                                  if (_signupFormKey.currentState?.validate() ?? false) {
-                                    registerUser();
-                                  }
-                                }
-                              },
+                                },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF0E47A1),
-                          disabledBackgroundColor: const Color(0xFF0E47A1).withOpacity(.5),
+                          disabledBackgroundColor: const Color(
+                            0xFF0E47A1,
+                          ).withOpacity(.5),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
                           ),
                           elevation: 0,
                         ),
-                        child: _busy
-                            ? const SizedBox(
-                                width: 22,
-                                height: 22,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                              )
-                            : Text(
-                                isLogin ? 'Log In' : 'Sign Up',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w700,
+                        child:
+                            _busy
+                                ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                                : Text(
+                                  isLogin ? 'Log In' : 'Sign Up',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w700,
+                                  ),
                                 ),
-                              ),
                       ),
                     ),
                   ],
@@ -373,23 +411,24 @@ class _AuthScreenState extends State<AuthScreen> {
     return Expanded(
       child: InkWell(
         borderRadius: BorderRadius.circular(30),
-        onTap: _busy
-            ? null
-            : () {
-                setState(() {
-                  if (text == 'Log In') {
-                    isLogin = true;
-                    _signupFormKey.currentState?.reset();
-                    _signupAV = AutovalidateMode.disabled;
-                    _clearSignupControllers();
-                  } else {
-                    isLogin = false;
-                    _loginFormKey.currentState?.reset();
-                    _loginAV = AutovalidateMode.disabled;
-                    _clearLoginControllers();
-                  }
-                });
-              },
+        onTap:
+            _busy
+                ? null
+                : () {
+                  setState(() {
+                    if (text == 'Log In') {
+                      isLogin = true;
+                      _signupFormKey.currentState?.reset();
+                      _signupAV = AutovalidateMode.disabled;
+                      _clearSignupControllers();
+                    } else {
+                      isLogin = false;
+                      _loginFormKey.currentState?.reset();
+                      _loginAV = AutovalidateMode.disabled;
+                      _clearLoginControllers();
+                    }
+                  });
+                },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
           alignment: Alignment.center,
@@ -441,8 +480,12 @@ class _AuthScreenState extends State<AuthScreen> {
       children: [
         TextFormField(
           controller: loginUsernameController,
-          validator: (v) => (v == null || v.isEmpty) ? 'กรุณากรอก Username' : null,
-          decoration: _roundedDecoration(label: 'Username', prefix: Icons.person),
+          validator:
+              (v) => (v == null || v.isEmpty) ? 'กรุณากรอก Username' : null,
+          decoration: _roundedDecoration(
+            label: 'Username',
+            prefix: Icons.person,
+          ),
         ),
         const SizedBox(height: 12),
         TextFormField(
@@ -457,8 +500,11 @@ class _AuthScreenState extends State<AuthScreen> {
             label: 'Password',
             prefix: Icons.lock,
             suffix: IconButton(
-              onPressed: () => setState(() => showLoginPassword = !showLoginPassword),
-              icon: Icon(showLoginPassword ? Icons.visibility : Icons.visibility_off),
+              onPressed:
+                  () => setState(() => showLoginPassword = !showLoginPassword),
+              icon: Icon(
+                showLoginPassword ? Icons.visibility : Icons.visibility_off,
+              ),
             ),
           ),
         ),
@@ -467,8 +513,11 @@ class _AuthScreenState extends State<AuthScreen> {
           children: [
             Checkbox(
               value: rememberMe,
-              onChanged: _busy ? null : (v) => setState(() => rememberMe = v ?? false),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+              onChanged:
+                  _busy ? null : (v) => setState(() => rememberMe = v ?? false),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(4),
+              ),
             ),
             const Text('Remember me'),
           ],
@@ -488,8 +537,11 @@ class _AuthScreenState extends State<AuthScreen> {
             Expanded(
               child: TextFormField(
                 controller: nameController,
-                inputFormatters: [FilteringTextInputFormatter.allow(nameRegExp)],
-                validator: (v) => (v == null || v.isEmpty) ? 'กรุณากรอกชื่อ' : null,
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(nameRegExp),
+                ],
+                validator:
+                    (v) => (v == null || v.isEmpty) ? 'กรุณากรอกชื่อ' : null,
                 decoration: _roundedDecoration(
                   label: 'ชื่อ',
                   prefix: Icons.person_outline,
@@ -500,8 +552,11 @@ class _AuthScreenState extends State<AuthScreen> {
             Expanded(
               child: TextFormField(
                 controller: surnameController,
-                inputFormatters: [FilteringTextInputFormatter.allow(nameRegExp)],
-                validator: (v) => (v == null || v.isEmpty) ? 'กรุณากรอกนามสกุล' : null,
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(nameRegExp),
+                ],
+                validator:
+                    (v) => (v == null || v.isEmpty) ? 'กรุณากรอกนามสกุล' : null,
                 decoration: _roundedDecoration(
                   label: 'นามสกุล',
                   prefix: Icons.person_outline,
@@ -514,7 +569,9 @@ class _AuthScreenState extends State<AuthScreen> {
         TextFormField(
           controller: emailController,
           keyboardType: TextInputType.emailAddress,
-          inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[\w@\.-]'))],
+          inputFormatters: [
+            FilteringTextInputFormatter.allow(RegExp(r'[\w@\.-]')),
+          ],
           validator: (v) {
             if (v == null || v.isEmpty) return 'กรุณากรอก Email';
             final emailRegExp = RegExp(r'^[^@]+@[^@]+\.[^@]+');
@@ -529,7 +586,9 @@ class _AuthScreenState extends State<AuthScreen> {
         const SizedBox(height: 12),
         TextFormField(
           controller: signupUsernameController,
-          inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9_.]'))],
+          inputFormatters: [
+            FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9_.]')),
+          ],
           validator: (v) {
             if (v == null || v.isEmpty) return 'กรุณากรอก Username';
             if (!usernameEmailRegExp.hasMatch(v)) {
@@ -555,8 +614,12 @@ class _AuthScreenState extends State<AuthScreen> {
             label: 'Password',
             prefix: Icons.lock_outline,
             suffix: IconButton(
-              onPressed: () => setState(() => showSignupPassword = !showSignupPassword),
-              icon: Icon(showSignupPassword ? Icons.visibility : Icons.visibility_off),
+              onPressed:
+                  () =>
+                      setState(() => showSignupPassword = !showSignupPassword),
+              icon: Icon(
+                showSignupPassword ? Icons.visibility : Icons.visibility_off,
+              ),
             ),
           ),
         ),
@@ -573,8 +636,13 @@ class _AuthScreenState extends State<AuthScreen> {
             label: 'Confirm Password',
             prefix: Icons.lock_outline,
             suffix: IconButton(
-              onPressed: () => setState(() => showConfirmPassword = !showConfirmPassword),
-              icon: Icon(showConfirmPassword ? Icons.visibility : Icons.visibility_off),
+              onPressed:
+                  () => setState(
+                    () => showConfirmPassword = !showConfirmPassword,
+                  ),
+              icon: Icon(
+                showConfirmPassword ? Icons.visibility : Icons.visibility_off,
+              ),
             ),
           ),
         ),
@@ -657,8 +725,8 @@ class ArcBandsHeader extends StatelessWidget {
 }
 
 class _ArcBandsPainter extends CustomPainter {
-  static const Color navy = Color(0xFF0B2A5B);       // พื้นหลังเข้ม
-  static const Color bandMid = Color(0xFF0E47A1);    // แถบกลาง
+  static const Color navy = Color(0xFF0B2A5B); // พื้นหลังเข้ม
+  static const Color bandMid = Color(0xFF0E47A1); // แถบกลาง
   static const Color bandBright = Color(0xFF0E7BFF); // แถบสว่าง
 
   @override
@@ -673,19 +741,31 @@ class _ArcBandsPainter extends CustomPainter {
 
     final Offset c = Offset(size.width * 1.10, -size.height * 0.10);
 
-    final Rect midOuter =
-        Rect.fromCenter(center: c, width: size.width * 1.90, height: size.height * 1.90);
-    final Rect midInner =
-        Rect.fromCenter(center: c, width: size.width * 1.45, height: size.height * 1.45);
+    final Rect midOuter = Rect.fromCenter(
+      center: c,
+      width: size.width * 1.90,
+      height: size.height * 1.90,
+    );
+    final Rect midInner = Rect.fromCenter(
+      center: c,
+      width: size.width * 1.45,
+      height: size.height * 1.45,
+    );
     final Path band1 = ringFromRects(midOuter, midInner);
     canvas.drawShadow(band1, Colors.black.withOpacity(.22), 8, false);
     canvas.drawPath(band1, Paint()..color = bandMid);
 
     final Offset cBright = Offset(size.width * 1.05, size.height * 0.05);
-    final Rect brOuter =
-        Rect.fromCenter(center: cBright, width: size.width * 2.20, height: size.height * 2.20);
-    final Rect brInner =
-        Rect.fromCenter(center: cBright, width: size.width * 1.65, height: size.height * 1.65);
+    final Rect brOuter = Rect.fromCenter(
+      center: cBright,
+      width: size.width * 2.20,
+      height: size.height * 2.20,
+    );
+    final Rect brInner = Rect.fromCenter(
+      center: cBright,
+      width: size.width * 1.65,
+      height: size.height * 1.65,
+    );
     final Path band2 = ringFromRects(brOuter, brInner);
     canvas.drawShadow(band2, Colors.black.withOpacity(.26), 10, false);
     canvas.drawPath(band2, Paint()..color = bandBright);
@@ -712,13 +792,20 @@ class AppSnack {
     IconData ic;
     switch (type) {
       case SnackType.success:
-        bg = const Color(0xFF22C55E); ic = Icons.check_circle_rounded; break;
+        bg = const Color(0xFF22C55E);
+        ic = Icons.check_circle_rounded;
+        break;
       case SnackType.warning:
-        bg = const Color(0xFFF59E0B); ic = Icons.warning_amber_rounded; break;
+        bg = const Color(0xFFF59E0B);
+        ic = Icons.warning_amber_rounded;
+        break;
       case SnackType.error:
-        bg = const Color(0xFFEF4444); ic = Icons.error_rounded; break;
+        bg = const Color(0xFFEF4444);
+        ic = Icons.error_rounded;
+        break;
       default:
-        bg = const Color(0xFF0E47A1); ic = Icons.info_rounded;
+        bg = const Color(0xFF0E47A1);
+        ic = Icons.info_rounded;
     }
     if (icon != null) ic = icon;
 
@@ -730,7 +817,8 @@ class AppSnack {
         elevation: 0,
         backgroundColor: Colors.transparent,
         margin: const EdgeInsets.fromLTRB(12, 0, 12, 16),
-        duration: duration ?? Duration(seconds: type == SnackType.error ? 4 : 2),
+        duration:
+            duration ?? Duration(seconds: type == SnackType.error ? 4 : 2),
         content: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
@@ -770,8 +858,13 @@ class AppSnack {
               ),
               const SizedBox(width: 6),
               GestureDetector(
-                onTap: () => ScaffoldMessenger.of(context).hideCurrentSnackBar(),
-                child: const Icon(Icons.close_rounded, color: Colors.white70, size: 18),
+                onTap:
+                    () => ScaffoldMessenger.of(context).hideCurrentSnackBar(),
+                child: const Icon(
+                  Icons.close_rounded,
+                  color: Colors.white70,
+                  size: 18,
+                ),
               ),
             ],
           ),
@@ -810,13 +903,19 @@ class AppSnack {
               SizedBox(
                 width: 22,
                 height: 22,
-                child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white),
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.4,
+                  color: Colors.white,
+                ),
               ),
               SizedBox(width: 12),
               Expanded(
                 child: Text(
                   'กำลังดำเนินการ...',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
@@ -826,8 +925,12 @@ class AppSnack {
     );
   }
 
-  static void success(BuildContext c, String m) => show(c, m, type: SnackType.success);
-  static void error(BuildContext c, String m)   => show(c, m, type: SnackType.error);
-  static void warn(BuildContext c, String m)    => show(c, m, type: SnackType.warning);
-  static void info(BuildContext c, String m)    => show(c, m, type: SnackType.info);
+  static void success(BuildContext c, String m) =>
+      show(c, m, type: SnackType.success);
+  static void error(BuildContext c, String m) =>
+      show(c, m, type: SnackType.error);
+  static void warn(BuildContext c, String m) =>
+      show(c, m, type: SnackType.warning);
+  static void info(BuildContext c, String m) =>
+      show(c, m, type: SnackType.info);
 }

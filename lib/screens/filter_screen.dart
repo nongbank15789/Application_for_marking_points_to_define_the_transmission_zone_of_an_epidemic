@@ -27,7 +27,13 @@ class _FilterScreenState extends State<FilterScreen> {
   String _selectedDangerFilter = 'ทั้งหมด';
 
   // ===== constant options =====
-  final List<String> _dateOptions = ['วันนี้', 'สัปดาห์นี้', 'เดือนนี้', 'ปีนี้', 'ทั้งหมด'];
+  final List<String> _dateOptions = [
+    'วันนี้',
+    'สัปดาห์นี้',
+    'เดือนนี้',
+    'ปีนี้',
+    'ทั้งหมด',
+  ];
   final List<String> _dangerOptions = ['น้อย', 'ปานกลาง', 'มาก', 'ทั้งหมด'];
 
   // ===== diseases (top-hit 3 + อื่น ๆ … + ทั้งหมด ล่างสุด) =====
@@ -54,81 +60,88 @@ class _FilterScreenState extends State<FilterScreen> {
   }
 
   Future<void> _fetchDiseases() async {
-  setState(() {
-    _diseaseLoading = true;
-    _diseaseLoadError = null;
-    _diseaseFreq.clear();
-    _allDiseases.clear();
-    _topHits.clear();
-    _others.clear();
-  });
+    setState(() {
+      _diseaseLoading = true;
+      _diseaseLoadError = null;
+      _diseaseFreq.clear();
+      _allDiseases.clear();
+      _topHits.clear();
+      _others.clear();
+    });
 
-  try {
-    // ดึงผู้ป่วยทั้งหมด แล้วนับโรคจากฐานข้อมูลโดยตรง
-    final res = await http.get(
-      Uri.parse('http://10.0.2.2/api/get_all_patients.php'),
-    );
+    try {
+      // ดึงผู้ป่วยทั้งหมด แล้วนับโรคจากฐานข้อมูลโดยตรง
+      final res = await http.get(
+        Uri.parse('http://10.0.2.2/api/get_all_patients.php'),
+      );
 
-    if (res.statusCode != 200) {
-      throw Exception('HTTP ${res.statusCode}');
-    }
-
-    final decoded = jsonDecode(res.body);
-
-    // นับความถี่แบบ case-insensitive และตัดช่องว่าง/ค่าว่างทิ้ง
-    final Map<String, int> freq = {};
-    final Map<String, String> displayName = {}; // เก็บชื่อที่ใช้แสดง (รูปแบบแรกที่พบ)
-
-    if (decoded is List) {
-      for (final row in decoded) {
-        final raw = (row['pat_epidemic'] ?? row['epidemic'])?.toString() ?? '';
-        final s = raw.trim();
-        if (s.isEmpty || s == 'ทั้งหมด') continue;
-
-        final key = s.toLowerCase();     // ใช้ key ตัวพิมพ์เล็กเพื่อรวมค่าที่สะกดต่างกัน
-        freq[key] = (freq[key] ?? 0) + 1;
-        displayName[key] = displayName[key] ?? s; // เก็บชื่อที่อ่านง่ายไว้แสดง
+      if (res.statusCode != 200) {
+        throw Exception('HTTP ${res.statusCode}');
       }
-    }
 
-    // จัดลำดับตามจำนวนคนที่ติดมาก → น้อย (ถ้าเท่ากันเรียงตามชื่อ)
-    final entries = freq.entries.toList()
-      ..sort((a, b) {
-        if (b.value != a.value) return b.value.compareTo(a.value);
-        return a.key.compareTo(b.key);
+      final decoded = jsonDecode(res.body);
+
+      // นับความถี่แบบ case-insensitive และตัดช่องว่าง/ค่าว่างทิ้ง
+      final Map<String, int> freq = {};
+      final Map<String, String> displayName =
+          {}; // เก็บชื่อที่ใช้แสดง (รูปแบบแรกที่พบ)
+
+      if (decoded is List) {
+        for (final row in decoded) {
+          final raw =
+              (row['pat_epidemic'] ?? row['epidemic'])?.toString() ?? '';
+          final s = raw.trim();
+          if (s.isEmpty || s == 'ทั้งหมด') continue;
+
+          final key =
+              s.toLowerCase(); // ใช้ key ตัวพิมพ์เล็กเพื่อรวมค่าที่สะกดต่างกัน
+          freq[key] = (freq[key] ?? 0) + 1;
+          displayName[key] =
+              displayName[key] ?? s; // เก็บชื่อที่อ่านง่ายไว้แสดง
+        }
+      }
+
+      // จัดลำดับตามจำนวนคนที่ติดมาก → น้อย (ถ้าเท่ากันเรียงตามชื่อ)
+      final entries =
+          freq.entries.toList()..sort((a, b) {
+            if (b.value != a.value) return b.value.compareTo(a.value);
+            return a.key.compareTo(b.key);
+          });
+
+      // รายชื่อทั้งหมด (ไว้ใช้ใน popup ค้นหา)
+      final byCount = entries.map((e) => displayName[e.key]!).toList();
+      final all = [...byCount]
+        ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+
+      // 3 อันดับยอดฮิต + ที่เหลือ
+      final top = byCount.take(TOP_HIT_COUNT).toList();
+      final others =
+          byCount.length > TOP_HIT_COUNT
+              ? byCount.sublist(TOP_HIT_COUNT)
+              : <String>[];
+
+      if (!mounted) return;
+      setState(() {
+        _allDiseases = all; // ใช้กับ popup ค้นหา
+        _topHits = top; // แสดงเป็นปุ่ม 3 อันดับในการ์ด
+        _others = others; // ถ้ามีค่อยแสดงปุ่ม "อื่น ๆ …"
+        _diseaseLoading = false;
+
+        // ถ้าค่าที่เลือกปัจจุบันหายไปจากรายการ ให้รีเซ็ตเป็น "ทั้งหมด"
+        if (_selectedDiseaseFilter != 'ทั้งหมด' &&
+            !_allDiseases.contains(_selectedDiseaseFilter)) {
+          _selectedDiseaseFilter = 'ทั้งหมด';
+        }
       });
-
-    // รายชื่อทั้งหมด (ไว้ใช้ใน popup ค้นหา)
-    final byCount = entries.map((e) => displayName[e.key]!).toList();
-    final all = [...byCount]..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
-
-    // 3 อันดับยอดฮิต + ที่เหลือ
-    final top = byCount.take(TOP_HIT_COUNT).toList();
-    final others = byCount.length > TOP_HIT_COUNT ? byCount.sublist(TOP_HIT_COUNT) : <String>[];
-
-    if (!mounted) return;
-    setState(() {
-      _allDiseases = all;     // ใช้กับ popup ค้นหา
-      _topHits = top;         // แสดงเป็นปุ่ม 3 อันดับในการ์ด
-      _others = others;       // ถ้ามีค่อยแสดงปุ่ม "อื่น ๆ …"
-      _diseaseLoading = false;
-
-      // ถ้าค่าที่เลือกปัจจุบันหายไปจากรายการ ให้รีเซ็ตเป็น "ทั้งหมด"
-      if (_selectedDiseaseFilter != 'ทั้งหมด' &&
-          !_allDiseases.contains(_selectedDiseaseFilter)) {
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _diseaseLoading = false;
+        _diseaseLoadError = 'โหลดรายการโรคไม่สำเร็จ: $e';
         _selectedDiseaseFilter = 'ทั้งหมด';
-      }
-    });
-  } catch (e) {
-    if (!mounted) return;
-    setState(() {
-      _diseaseLoading = false;
-      _diseaseLoadError = 'โหลดรายการโรคไม่สำเร็จ: $e';
-      _selectedDiseaseFilter = 'ทั้งหมด';
-    });
+      });
+    }
   }
-}
-
 
   void _resetAll() {
     setState(() {
@@ -151,15 +164,17 @@ class _FilterScreenState extends State<FilterScreen> {
             void filter(String s) {
               q = s;
               final lower = s.toLowerCase();
-              filtered = _allDiseases
-                  .where((e) => e.toLowerCase().contains(lower))
-                  .toList();
+              filtered =
+                  _allDiseases
+                      .where((e) => e.toLowerCase().contains(lower))
+                      .toList();
               setSB(() {});
             }
 
             return AlertDialog(
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16)),
+                borderRadius: BorderRadius.circular(16),
+              ),
               title: const Text('เลือก โรคที่ติด'),
               content: SizedBox(
                 width: double.maxFinite,
@@ -173,39 +188,48 @@ class _FilterScreenState extends State<FilterScreen> {
                         prefixIcon: const Icon(Icons.search),
                         isDense: true,
                         border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10)),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
                       onChanged: filter,
                     ),
                     const SizedBox(height: 10),
                     ConstrainedBox(
                       constraints: const BoxConstraints(maxHeight: 360),
-                      child: filtered.isEmpty
-                          ? const Center(child: Text('ไม่พบรายการ'))
-                          : ListView.separated(
-                              itemCount: filtered.length,
-                              separatorBuilder: (_, __) =>
-                                  const Divider(height: 1),
-                              itemBuilder: (_, i) {
-                                final name = filtered[i];
-                                return ListTile(
-                                  contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 8),
-                                  title: Text(name,
+                      child:
+                          filtered.isEmpty
+                              ? const Center(child: Text('ไม่พบรายการ'))
+                              : ListView.separated(
+                                itemCount: filtered.length,
+                                separatorBuilder:
+                                    (_, __) => const Divider(height: 1),
+                                itemBuilder: (_, i) {
+                                  final name = filtered[i];
+                                  return ListTile(
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 8,
+                                    ),
+                                    title: Text(
+                                      name,
                                       style: const TextStyle(
-                                          fontSize: 18, height: 1.3)),
-                                  onTap: () => Navigator.pop(ctx, name),
-                                );
-                              },
-                            ),
+                                        fontSize: 18,
+                                        height: 1.3,
+                                      ),
+                                    ),
+                                    onTap: () => Navigator.pop(ctx, name),
+                                  );
+                                },
+                              ),
                     ),
                   ],
                 ),
               ),
               actions: [
                 TextButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    child: const Text('ยกเลิก')),
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('ยกเลิก'),
+                ),
               ],
             );
           },
@@ -232,17 +256,20 @@ class _FilterScreenState extends State<FilterScreen> {
           decoration: BoxDecoration(
             color: selected ? kPrimaryDark : Colors.white,
             borderRadius: BorderRadius.circular(28),
-            border:
-                Border.all(color: selected ? kPrimaryDark : kBorder, width: 1.2),
-            boxShadow: selected
-                ? [
-                    BoxShadow(
-                      color: kPrimaryDark.withOpacity(0.18),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
-                    )
-                  ]
-                : const [],
+            border: Border.all(
+              color: selected ? kPrimaryDark : kBorder,
+              width: 1.2,
+            ),
+            boxShadow:
+                selected
+                    ? [
+                      BoxShadow(
+                        color: kPrimaryDark.withOpacity(0.18),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ]
+                    : const [],
           ),
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Row(
@@ -252,31 +279,38 @@ class _FilterScreenState extends State<FilterScreen> {
                 width: 26,
                 child: AnimatedSwitcher(
                   duration: _anim,
-                  transitionBuilder: (child, a) => ScaleTransition(
-                    scale: CurvedAnimation(parent: a, curve: _curve),
-                    child: FadeTransition(opacity: a, child: child),
-                  ),
-                  child: selected
-                      ? Container(
-                          key: const ValueKey('on'),
-                          height: 22,
-                          width: 22,
-                          decoration: const BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Center(
-                            child: Icon(Icons.check,
-                                size: 16, color: kPrimaryDark),
-                          ),
-                        )
-                      : const SizedBox(key: ValueKey('off')),
+                  transitionBuilder:
+                      (child, a) => ScaleTransition(
+                        scale: CurvedAnimation(parent: a, curve: _curve),
+                        child: FadeTransition(opacity: a, child: child),
+                      ),
+                  child:
+                      selected
+                          ? Container(
+                            key: const ValueKey('on'),
+                            height: 22,
+                            width: 22,
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Center(
+                              child: Icon(
+                                Icons.check,
+                                size: 16,
+                                color: kPrimaryDark,
+                              ),
+                            ),
+                          )
+                          : const SizedBox(key: ValueKey('off')),
                 ),
               ),
               if (icon != null) ...[
-                Icon(icon,
-                    size: 18,
-                    color: selected ? Colors.white : Colors.black87),
+                Icon(
+                  icon,
+                  size: 18,
+                  color: selected ? Colors.white : Colors.black87,
+                ),
                 const SizedBox(width: 8),
               ],
               Expanded(
@@ -313,7 +347,10 @@ class _FilterScreenState extends State<FilterScreen> {
           child: Text(
             title,
             style: const TextStyle(
-                fontSize: 16.5, fontWeight: FontWeight.w700, color: kPrimaryDark),
+              fontSize: 16.5,
+              fontWeight: FontWeight.w700,
+              color: Color.fromRGBO(13, 71, 161, 1),
+            ),
           ),
         ),
         if (trailing != null) trailing,
@@ -336,9 +373,10 @@ class _FilterScreenState extends State<FilterScreen> {
         borderRadius: BorderRadius.circular(_cardRadius),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.12),
-              blurRadius: 10,
-              offset: const Offset(0, 6)),
+            color: Colors.black.withOpacity(0.12),
+            blurRadius: 10,
+            offset: const Offset(0, 6),
+          ),
         ],
         border: Border.all(color: kBorder, width: 1),
       ),
@@ -350,7 +388,8 @@ class _FilterScreenState extends State<FilterScreen> {
           SizedBox(
             height: _verticalAreaHeight,
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch, // ยืดปุ่มเต็มกว้าง
+              crossAxisAlignment:
+                  CrossAxisAlignment.stretch, // ยืดปุ่มเต็มกว้าง
               children: [
                 for (int i = 0; i < options.length; i++) ...[
                   _pill(
@@ -369,9 +408,10 @@ class _FilterScreenState extends State<FilterScreen> {
             height: 18,
             child: Align(
               alignment: Alignment.centerRight,
-              child: Text('เลือก: $selected',
-                  style:
-                      TextStyle(fontSize: 12.5, color: Colors.grey.shade700)),
+              child: Text(
+                'เลือก: $selected',
+                style: TextStyle(fontSize: 12.5, color: Colors.grey.shade700),
+              ),
             ),
           ),
         ],
@@ -384,34 +424,40 @@ class _FilterScreenState extends State<FilterScreen> {
     final List<Widget> buttons = [];
 
     for (final e in _topHits) {
-      buttons.add(_pill(
-        label: e,
-        selected: _selectedDiseaseFilter == e,
-        onTap: () => setState(() => _selectedDiseaseFilter = e),
-      ));
+      buttons.add(
+        _pill(
+          label: e,
+          selected: _selectedDiseaseFilter == e,
+          onTap: () => setState(() => _selectedDiseaseFilter = e),
+        ),
+      );
       buttons.add(const SizedBox(height: _pillSpacing));
     }
 
     if (_others.isNotEmpty) {
-      buttons.add(_pill(
-        label: 'อื่น ๆ …',
-        icon: Icons.format_list_bulleted,
-        selected: false,
-        onTap: () async {
-          final picked = await _showDiseasePickerWithSearch();
-          if (picked != null) {
-            setState(() => _selectedDiseaseFilter = picked);
-          }
-        },
-      ));
+      buttons.add(
+        _pill(
+          label: 'อื่น ๆ …',
+          icon: Icons.format_list_bulleted,
+          selected: false,
+          onTap: () async {
+            final picked = await _showDiseasePickerWithSearch();
+            if (picked != null) {
+              setState(() => _selectedDiseaseFilter = picked);
+            }
+          },
+        ),
+      );
       buttons.add(const SizedBox(height: _pillSpacing));
     }
 
-    buttons.add(_pill(
-      label: 'ทั้งหมด',
-      selected: _selectedDiseaseFilter == 'ทั้งหมด',
-      onTap: () => setState(() => _selectedDiseaseFilter = 'ทั้งหมด'),
-    ));
+    buttons.add(
+      _pill(
+        label: 'ทั้งหมด',
+        selected: _selectedDiseaseFilter == 'ทั้งหมด',
+        onTap: () => setState(() => _selectedDiseaseFilter = 'ทั้งหมด'),
+      ),
+    );
 
     // เติมให้ครบ 5 แถว (คงความสูงนิ่ง)
     final itemCount = (buttons.length + 1) ~/ 2; // ปุ่มจริง
@@ -428,11 +474,15 @@ class _FilterScreenState extends State<FilterScreen> {
         borderRadius: BorderRadius.circular(_cardRadius),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.12),
-              blurRadius: 10,
-              offset: const Offset(0, 6)),
+            color: Colors.black.withOpacity(0.12),
+            blurRadius: 10,
+            offset: const Offset(0, 6),
+          ),
         ],
-        border: Border.all(color: kBorder, width: 1),
+        border: Border.all(
+          color: const Color.fromRGBO(155, 210, 230, 1),
+          width: 1,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -440,41 +490,49 @@ class _FilterScreenState extends State<FilterScreen> {
           _cardHeader(
             Icons.coronavirus_rounded,
             'โรคที่ติด',
-            trailing: _diseaseLoading
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : (_diseaseLoadError != null
-                    ? IconButton(
-                        tooltip: 'ลองอีกครั้ง',
-                        onPressed: _fetchDiseases,
-                        icon: const Icon(Icons.refresh, size: 18, color: kPrimary),
-                      )
-                    : null),
+            trailing:
+                _diseaseLoading
+                    ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                    : (_diseaseLoadError != null
+                        ? IconButton(
+                          tooltip: 'ลองอีกครั้ง',
+                          onPressed: _fetchDiseases,
+                          icon: const Icon(
+                            Icons.refresh,
+                            size: 18,
+                            color: kPrimary,
+                          ),
+                        )
+                        : null),
           ),
           const SizedBox(height: 12),
           SizedBox(
             height: _verticalAreaHeight,
-            child: _diseaseLoading
-                ? _diseaseSkeletonVertical()
-                : SingleChildScrollView(
-                    physics: const NeverScrollableScrollPhysics(),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch, // ยืดปุ่มเต็มกว้าง
-                      children: buttons,
+            child:
+                _diseaseLoading
+                    ? _diseaseSkeletonVertical()
+                    : SingleChildScrollView(
+                      physics: const NeverScrollableScrollPhysics(),
+                      child: Column(
+                        crossAxisAlignment:
+                            CrossAxisAlignment.stretch, // ยืดปุ่มเต็มกว้าง
+                        children: buttons,
+                      ),
                     ),
-                  ),
           ),
           const SizedBox(height: 8),
           SizedBox(
             height: 18,
             child: Align(
               alignment: Alignment.centerRight,
-              child: Text('เลือก: $_selectedDiseaseFilter',
-                  style:
-                      TextStyle(fontSize: 12.5, color: Colors.grey.shade700)),
+              child: Text(
+                'เลือก: $_selectedDiseaseFilter',
+                style: TextStyle(fontSize: 12.5, color: Colors.grey.shade700),
+              ),
             ),
           ),
         ],
@@ -484,12 +542,12 @@ class _FilterScreenState extends State<FilterScreen> {
 
   Widget _diseaseSkeletonVertical() {
     Widget box() => Container(
-          height: _pillHeight,
-          decoration: BoxDecoration(
-            color: kBorder.withOpacity(0.55),
-            borderRadius: BorderRadius.circular(28),
-          ),
-        );
+      height: _pillHeight,
+      decoration: BoxDecoration(
+        color: const Color.fromRGBO(155, 210, 230, 1).withOpacity(0.55),
+        borderRadius: BorderRadius.circular(28),
+      ),
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -507,35 +565,40 @@ class _FilterScreenState extends State<FilterScreen> {
 
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF0077C2), Color(0xFF4FC3F7)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
+        color: Color(0xFFE3F2FD),
         child: SafeArea(
           child: Column(
             children: [
               AppBar(
+                scrolledUnderElevation: 0, // <- กันทึบเมื่อเลื่อน
+                surfaceTintColor: Colors.transparent, // <- กันการใส่ tint
+                shadowColor: Colors.transparent,
                 backgroundColor: Colors.transparent,
                 elevation: 0,
                 leading: IconButton(
-                  icon: const Icon(Icons.arrow_back_ios,
-                      color: Colors.white, size: 22),
+                  icon: const Icon(
+                    Icons.arrow_back_ios,
+                    color: kPrimary,
+                    size: 22,
+                  ),
                   onPressed: () => Navigator.pop(context),
                 ),
                 centerTitle: true,
-                title: const Text('ตัวกรองแผนที่',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 26,
-                        fontWeight: FontWeight.bold)),
+                title: const Text(
+                  'ตัวกรองแผนที่',
+                  style: TextStyle(
+                    color: Color(0xFF0277BD),
+                    fontSize: 26,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 actions: [
                   TextButton(
                     onPressed: _resetAll,
-                    child: const Text('ล้างค่า',
-                        style: TextStyle(color: Colors.white, fontSize: 16)),
+                    child: const Text(
+                      'ล้างค่า',
+                      style: TextStyle(color: Color(0xFF0277BD), fontSize: 16),
+                    ),
                   ),
                 ],
               ),
@@ -545,8 +608,7 @@ class _FilterScreenState extends State<FilterScreen> {
               // ===== Layout 2 คอลัมน์ =====
               Expanded(
                 child: SingleChildScrollView(
-                  padding:
-                      EdgeInsets.symmetric(horizontal: size.width * 0.05),
+                  padding: EdgeInsets.symmetric(horizontal: size.width * 0.05),
                   child: Column(
                     children: [
                       Row(
@@ -557,8 +619,10 @@ class _FilterScreenState extends State<FilterScreen> {
                               title: 'ติดเชื้อภายใน',
                               options: _dateOptions,
                               selected: _selectedInfectionFilter,
-                              onSelected: (v) =>
-                                  setState(() => _selectedInfectionFilter = v),
+                              onSelected:
+                                  (v) => setState(
+                                    () => _selectedInfectionFilter = v,
+                                  ),
                             ),
                           ),
                           const SizedBox(width: 14),
@@ -568,8 +632,10 @@ class _FilterScreenState extends State<FilterScreen> {
                               title: 'หายจากโรคภายใน',
                               options: _dateOptions,
                               selected: _selectedRecoveryFilter,
-                              onSelected: (v) =>
-                                  setState(() => _selectedRecoveryFilter = v),
+                              onSelected:
+                                  (v) => setState(
+                                    () => _selectedRecoveryFilter = v,
+                                  ),
                             ),
                           ),
                         ],
@@ -585,8 +651,9 @@ class _FilterScreenState extends State<FilterScreen> {
                               title: 'ความอันตราย',
                               options: _dangerOptions,
                               selected: _selectedDangerFilter,
-                              onSelected: (v) =>
-                                  setState(() => _selectedDangerFilter = v),
+                              onSelected:
+                                  (v) =>
+                                      setState(() => _selectedDangerFilter = v),
                             ),
                           ),
                         ],
@@ -619,20 +686,25 @@ class _FilterScreenState extends State<FilterScreen> {
                       backgroundColor: Colors.transparent,
                       shadowColor: Colors.transparent,
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(28)),
+                        borderRadius: BorderRadius.circular(28),
+                      ),
                     ),
                     child: Ink(
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                            colors: [Color(0xFF0277BD), Color(0xFF00BCD4)]),
-                        borderRadius: BorderRadius.circular(28),
+                        color: const Color.fromRGBO(13, 71, 161, 1),
+                        borderRadius: BorderRadius.circular(
+                          15,
+                        ), // ปรับเลขตามความโค้งที่ต้องการ
                       ),
                       child: const Center(
-                        child: Text('ยืนยัน',
-                            style: TextStyle(
-                                fontSize: 18,
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold)),
+                        child: Text(
+                          'ยืนยัน',
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ),
                   ),

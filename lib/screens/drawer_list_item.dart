@@ -1,32 +1,54 @@
   import 'package:flutter/material.dart';
 
   class DrawerListItem extends StatelessWidget {
-    const DrawerListItem({
-      super.key,
-      required this.icon,
-      required this.title,
-      this.onTap, // onTap เป็น optional เพราะบางรายการอาจจะไม่มีการนำทาง
-    });
+  final IconData icon;
+  final String title;
+  final VoidCallback onTap;
 
-    final IconData icon;
-    final String title;
-    final VoidCallback? onTap; // VoidCallback? หมายถึงสามารถเป็น null ได้
+  const DrawerListItem({
+    Key? key,
+    required this.icon,
+    required this.title,
+    required this.onTap,
+  }) : super(key: key);
 
-    @override
-    Widget build(BuildContext context) {
-      return ListTile(
-        leading: Icon(icon, color: Colors.white),
-        title: Text(title, style: const TextStyle(color: Colors.white)),
-        onTap: () {
-          // หาก onTap ไม่เป็น null ให้เรียกใช้ฟังก์ชัน onTap
-          if (onTap != null) {
-            Navigator.pop(context); // ปิด Drawer ก่อนทำการนำทาง
-            onTap!(); // เรียกใช้ฟังก์ชันที่ถูกส่งเข้ามา
-          } else {
-            // ถ้า onTap เป็น null (ไม่มีการกำหนด action) ให้แค่ปิด Drawer
-            Navigator.pop(context);
-          }
-        },
-      );
-    }
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        splashColor: Colors.blue.withOpacity(0.2),
+        highlightColor: Colors.blue.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                child: Icon(
+                  icon,
+                  color: const Color.fromARGB(255, 255, 255, 255),
+                  size: 28,
+                ),
+              ),
+              const SizedBox(width: 18),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: const Color.fromARGB(255, 255, 255, 255),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
+}
+

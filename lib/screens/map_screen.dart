@@ -33,6 +33,7 @@ class _MapScreenState extends State<MapScreen> {
   int? userId;
   LatLng? _center;
   bool _isLoading = true;
+  bool _showSearch = false;
 
   final _secure = const FlutterSecureStorage(); // << เพิ่ม
 
@@ -725,7 +726,14 @@ class _MapScreenState extends State<MapScreen> {
       ),
       width: MediaQuery.of(context).size.width * 0.75,
       child: Container(
-        color: Colors.blue.shade800,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Color(0xFF2E8BFF), // ฟ้าสว่างด้านบน
+              Color(0xFF1A5DFF),
+            ],
+          ),
+        ),
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
@@ -744,7 +752,7 @@ class _MapScreenState extends State<MapScreen> {
                 return SizedBox(
                   height: headerHeight,
                   child: DrawerHeader(
-                    decoration: BoxDecoration(color: Colors.blue.shade900),
+                    decoration: const BoxDecoration(),
                     margin: EdgeInsets.zero,
                     padding: const EdgeInsets.fromLTRB(16, 8, 8, 16),
                     child: Column(
@@ -768,7 +776,7 @@ class _MapScreenState extends State<MapScreen> {
                         ),
                         const Spacer(),
                         CircleAvatar(
-                          radius: 30,
+                          radius: 40,
                           backgroundImage:
                               (userData != null &&
                                       userData!['stf_avatar'] != null)
@@ -793,7 +801,7 @@ class _MapScreenState extends State<MapScreen> {
                               : "ชื่อผู้ใช้",
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 16,
+                            fontSize: 18,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -804,7 +812,7 @@ class _MapScreenState extends State<MapScreen> {
               },
             ),
             DrawerListItem(
-              icon: Icons.person,
+              icon: Icons.person_outline,
               title: 'โปรไฟล์',
               onTap: () {
                 if (userId != null) {
@@ -823,7 +831,7 @@ class _MapScreenState extends State<MapScreen> {
               },
             ),
             DrawerListItem(
-              icon: Icons.filter_list,
+              icon: Icons.tune_outlined,
               title: 'ตัวกรองแผนที่',
               onTap: () async {
                 final selectedFilters =
@@ -842,7 +850,7 @@ class _MapScreenState extends State<MapScreen> {
               },
             ),
             DrawerListItem(
-              icon: Icons.history,
+              icon: Icons.history_outlined,
               title: 'ประวัติผู้ป่วย',
               onTap: () {
                 Navigator.pop(context);
@@ -855,7 +863,7 @@ class _MapScreenState extends State<MapScreen> {
               },
             ),
             DrawerListItem(
-              icon: Icons.add_box,
+              icon: Icons.add_box_outlined,
               title: 'เพิ่มข้อมูลผู้ป่วย',
               onTap: () {
                 if (_lastMarkerLat != null && _lastMarkerLng != null) {
@@ -888,7 +896,7 @@ class _MapScreenState extends State<MapScreen> {
               },
             ),
             DrawerListItem(
-              icon: Icons.logout,
+              icon: Icons.logout_outlined,
               title: 'ออกจากระบบ',
               onTap: _logout, // << ใช้ฟังก์ชันใหม่
             ),
@@ -898,178 +906,181 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
-Widget _buildTopBar() {
-  final double topInset = MediaQuery.of(context).padding.top;
+  Widget _buildTopBar() {
+    final double topInset = MediaQuery.of(context).padding.top;
 
-  return Positioned(
-    top: 0,
-    left: 0,
-    right: 0,
-    child: Container(
-      height: topInset + 96,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFF1C31FF), Color(0xFF006BFF)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+    return Positioned(
+      top: 0,
+      left: 0,
+      right: 0,
+      child: Container(
+        height: topInset + 64,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Color(0xFF2E8BFF), // ฟ้าสว่างด้านบน
+              Color(0xFF1A5DFF),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black26,
+              offset: Offset(0, 4),
+              blurRadius: 16,
+            ),
+          ],
         ),
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
-        boxShadow: [
-          BoxShadow(color: Colors.black26, offset: Offset(0, 4), blurRadius: 16),
-        ],
-      ),
-      child: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              // ความกว้างเมื่อขยาย: ทั้งแถบ ลบพื้นที่ปุ่มเมนู + เว้นระยะ
-              final double expandedWidth = constraints.maxWidth - 48 - 12;
+        child: SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                // ความกว้างเมื่อขยาย: ทั้งแถบ ลบพื้นที่ปุ่มเมนู + เว้นระยะ
+                final double expandedWidth = constraints.maxWidth - 48 - 12;
 
-              return Stack(
-                alignment: Alignment.center,
-                children: [
-                  // แถวพื้นฐาน: เมนูซ้าย + แว่นขวา (ตอนยุบ)
-                  Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.menu, color: Colors.white, size: 26),
-                        onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+                return Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(
+                        Icons.menu,
+                        color: Colors.white,
+                        size: 26,
                       ),
-                      const Spacer(),
-                      AnimatedOpacity(
-                        duration: const Duration(milliseconds: 180),
-                        opacity: _searchExpanded ? 0 : 1,
-                        child: IconButton(
-                          icon: const Icon(Icons.search, color: Colors.white, size: 26),
-                          onPressed: () => setState(() => _searchExpanded = true),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  // ช่องค้นหาแบบขยายจากขวา → ซ้าย
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: IgnorePointer(
-                      ignoring: !_searchExpanded,
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 260),
-                        curve: Curves.easeInOut,
-                        width: _searchExpanded ? expandedWidth : 0,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        clipBehavior: Clip.hardEdge,
-                        child: _searchExpanded
-                            ? Row(
-                                children: [
-                                  const SizedBox(width: 10),
-                                  const Icon(Icons.search, color: Colors.black54),
-                                  const SizedBox(width: 6),
-                                  Expanded(
-                                    child: TextField(
-                                      controller: _searchController,
-                                      autofocus: true,
-                                      decoration: const InputDecoration(
-                                        hintText: 'Search',
-                                        border: InputBorder.none,
-                                        isDense: true,
-                                      ),
-                                      textInputAction: TextInputAction.search,
-                                      onSubmitted: (value) {
-                                        final q = value.trim();
-                                        if (q.isNotEmpty) _searchLocation(q);
-                                        setState(() => _searchExpanded = false);
-                                      },
-                                    ),
-                                  ),
-                                  IconButton(
-                                    tooltip: 'ค้นหา',
-                                    splashRadius: 18,
-                                    icon: const Icon(Icons.arrow_forward_rounded),
-                                    onPressed: () {
-                                      final q = _searchController.text.trim();
-                                      if (q.isNotEmpty) _searchLocation(q);
-                                      setState(() => _searchExpanded = false);
-                                    },
-                                  ),
-                                ],
-                              )
-                            : null,
-                      ),
+                      onPressed: () => _scaffoldKey.currentState?.openDrawer(),
                     ),
-                  ),
-                ],
-              );
-            },
+                    const SizedBox(width: 10),
+
+                    if (_showSearch)
+                      Expanded(
+                        child: Container(
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: const Color.fromARGB(0, 0, 0, 0),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: _searchController,
+                                  style: const TextStyle(
+                                    color:
+                                        Colors.white, // ← สีของข้อความที่พิมพ์
+                                  ),
+                                  decoration: const InputDecoration(
+                                    hintText: 'ค้นหา...',
+                                    hintStyle: TextStyle(
+                                      color:
+                                          Colors
+                                              .white, // ← เปลี่ยนสี hint เป็นสีขาว
+                                    ),
+                                    border: InputBorder.none,
+                                    isDense: true,
+                                  ),
+                                  textInputAction: TextInputAction.search,
+                                  onSubmitted: (value) {
+                                    final q = value.trim();
+                                    if (q.isNotEmpty) _searchLocation(q);
+                                  },
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.search_outlined,
+                                  color: Color.fromARGB(255, 255, 255, 255),
+                                ),
+                                onPressed: () {
+                                  final q = _searchController.text.trim();
+                                  if (q.isNotEmpty) _searchLocation(q);
+                                  setState(() => _showSearch = false);
+                                  _searchController.clear();
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    else
+                      const Spacer(),
+                    if (!_showSearch)
+                      IconButton(
+                        icon: const Icon(
+                          Icons.search,
+                          color: Colors.white,
+                          size: 26,
+                        ),
+                        onPressed: () {
+                          setState(() => _showSearch = true);
+                        },
+                      ),
+                  ],
+                );
+              },
+            ),
           ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
-
-
- Widget _buildFloatingButtons() {
-  final double topInset = MediaQuery.of(context).padding.top;
-  return Positioned(
-    top: topInset + 130, // วางใต้ AppBar โค้ง
-    right: 16,
-    child: Column(
-      children: [
-        FloatingActionButton(
-          mini: true,
-          heroTag: "myLocationBtn",
-          onPressed: () => _determinePosition(forceCurrent: true),
-          child: const Icon(Icons.my_location),
-        ),
-        const SizedBox(height: 8),
-        FloatingActionButton(
-          mini: true,
-          heroTag: "zoomInBtn",
-          onPressed: () async {
-            if (_controller.isCompleted) {
-              final controller = await _controller.future;
-              controller.animateCamera(CameraUpdate.zoomIn());
-            }
-          },
-          child: const Icon(Icons.center_focus_strong),
-        ),
-        const SizedBox(height: 8),
-        FloatingActionButton(
-          mini: true,
-          heroTag: "compassBtn",
-          onPressed: () async {
-            try {
-              if (_controller.isCompleted && _currentCameraPosition != null) {
+  Widget _buildFloatingButtons() {
+    final double topInset = MediaQuery.of(context).padding.top;
+    return Positioned(
+      top: topInset + 130, // วางใต้ AppBar โค้ง
+      right: 16,
+      child: Column(
+        children: [
+          FloatingActionButton(
+            mini: true,
+            heroTag: "myLocationBtn",
+            onPressed: () => _determinePosition(forceCurrent: true),
+            child: const Icon(Icons.my_location),
+          ),
+          const SizedBox(height: 8),
+          FloatingActionButton(
+            mini: true,
+            heroTag: "zoomInBtn",
+            onPressed: () async {
+              if (_controller.isCompleted) {
                 final controller = await _controller.future;
-                controller.animateCamera(
-                  CameraUpdate.newCameraPosition(
-                    CameraPosition(
-                      target: _currentCameraPosition!.target,
-                      zoom: _currentCameraPosition!.zoom,
-                      bearing: 0,
-                      tilt: _currentCameraPosition!.tilt,
-                    ),
-                  ),
-                );
+                controller.animateCamera(CameraUpdate.zoomIn());
               }
-            } catch (e) {
-              debugPrint("❌ Error resetting compass: $e");
-            }
-          },
-          child: const Icon(Icons.explore),
-        ),
-      ],
-    ),
-  );
-}
-
+            },
+            child: const Icon(Icons.center_focus_strong),
+          ),
+          const SizedBox(height: 8),
+          FloatingActionButton(
+            mini: true,
+            heroTag: "compassBtn",
+            onPressed: () async {
+              try {
+                if (_controller.isCompleted && _currentCameraPosition != null) {
+                  final controller = await _controller.future;
+                  controller.animateCamera(
+                    CameraUpdate.newCameraPosition(
+                      CameraPosition(
+                        target: _currentCameraPosition!.target,
+                        zoom: _currentCameraPosition!.zoom,
+                        bearing: 0,
+                        tilt: _currentCameraPosition!.tilt,
+                      ),
+                    ),
+                  );
+                }
+              } catch (e) {
+                debugPrint("❌ Error resetting compass: $e");
+              }
+            },
+            child: const Icon(Icons.explore),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildBottomSheet() {
     return DraggableScrollableSheet(

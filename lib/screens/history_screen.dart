@@ -123,23 +123,20 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF0077C2), Color(0xFF4FC3F7)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
+        decoration: const BoxDecoration(color: Color(0xFFe6f5fc)),
         child: SafeArea(
           child: Column(
             children: [
               AppBar(
+                scrolledUnderElevation: 0, // <- กันทึบเมื่อเลื่อน
+                surfaceTintColor: Colors.transparent, // <- กันการใส่ tint
+                shadowColor: Colors.transparent,
                 backgroundColor: Colors.transparent,
                 elevation: 0,
                 leading: IconButton(
                   icon: const Icon(
                     Icons.arrow_back_ios,
-                    color: Colors.white,
+                    color: Color(0xFF0277BD),
                     size: 24,
                   ),
                   onPressed: () {
@@ -153,7 +150,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 title: const Text(
                   'ประวัติผู้ป่วย',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: Color(0xFF0277BD),
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
                   ),
@@ -260,8 +257,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
       width: size.width * 0.9,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.95),
+        color: Color(0xFFE6F5FC),
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: Color.fromRGBO(155, 210, 230, 1), // ขอบฟ้าอ่อน
+          width: 1.5, // ความหนาของขอบ
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.15),
@@ -283,15 +284,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF0077C2),
+                  color: Color.fromRGBO(13, 71, 161, 1),
                 ),
               ),
               Row(
                 children: [
                   IconButton(
                     icon: const Icon(
-                      Icons.location_on,
-                      color: Color(0xFF4FC3F7),
+                      Icons.location_on_outlined,
+                      color: Color.fromRGBO(13, 71, 161, 1),
                       size: 24,
                     ),
                     onPressed: () {
@@ -321,8 +322,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   ),
                   IconButton(
                     icon: const Icon(
-                      Icons.fullscreen,
-                      color: Color(0xFF4FC3F7),
+                      Icons.fullscreen_outlined,
+                      color: Color.fromRGBO(13, 71, 161, 1),
                       size: 24,
                     ),
                     onPressed: () => _showEditDialog(record),
@@ -331,7 +332,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
               ),
             ],
           ),
-          const Divider(color: Color(0xFFB0BEC5), thickness: 1, height: 20),
+          const Divider(
+            color: Color.fromRGBO(155, 210, 230, 1),
+            thickness: 1.5,
+            height: 20,
+          ),
           _buildInfoRow('โรคที่ติด', disease),
           const SizedBox(height: 8),
           Row(
@@ -361,7 +366,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
           style: const TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF4FC3F7),
+            color: Color(0xFF0277BD),
           ),
         ),
         const SizedBox(height: 4),
@@ -707,124 +712,156 @@ class _EditHistoryRecordDialogState extends State<EditHistoryRecordDialog> {
     }
 
     showDialog(
-    context: context,
-    barrierDismissible: false,
-    builder: (_) => const Center(child: CircularProgressIndicator()),
-  );
-
-  final uri = Uri.http('10.0.2.2:80', '/api/update_history.php');
-  try {
-    final response = await http.post(
-      uri,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'pat_id': widget.record.id,
-        'pat_name': _nameController.text,
-        'pat_epidemic': _diseaseController.text,
-        'pat_infection_date': _startDateController.text,
-        'pat_recovery_date': _endDateController.text,
-        'pat_phone': _phoneNumberController.text,
-        'pat_danger_level': _selectedDangerLevel,
-        'pat_description': _descriptionController.text,
-        'pat_danger_range': _dangerRangeController.text,
-      }),
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
     );
 
-    if (!mounted) return;
-    Navigator.pop(context); // ปิด loading
+    final uri = Uri.http('10.0.2.2:80', '/api/update_history.php');
+    try {
+      final response = await http.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'pat_id': widget.record.id,
+          'pat_name': _nameController.text,
+          'pat_epidemic': _diseaseController.text,
+          'pat_infection_date': _startDateController.text,
+          'pat_recovery_date': _endDateController.text,
+          'pat_phone': _phoneNumberController.text,
+          'pat_danger_level': _selectedDangerLevel,
+          'pat_description': _descriptionController.text,
+          'pat_danger_range': _dangerRangeController.text,
+        }),
+      );
 
-    if (response.statusCode == 200) {
-      widget.onRecordUpdated();
       if (!mounted) return;
-      Navigator.pop(context); // ปิด dialog แก้ไข
+      Navigator.pop(context); // ปิด loading
 
-      // แจ้งสำเร็จด้วย parentContext (ซึ่งยัง mounted)
-      _showInfo('บันทึกข้อมูลเรียบร้อยแล้ว');
-    } else {
-      _showError('Failed to update record with status code: ${response.statusCode}');
+      if (response.statusCode == 200) {
+        widget.onRecordUpdated();
+        if (!mounted) return;
+        Navigator.pop(context); // ปิด dialog แก้ไข
+
+        // แจ้งสำเร็จด้วย parentContext (ซึ่งยัง mounted)
+        _showInfo('บันทึกข้อมูลเรียบร้อยแล้ว');
+      } else {
+        _showError(
+          'Failed to update record with status code: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context); // ปิด loading ถ้ายังเปิดอยู่
+      _showError('Error: $e');
     }
-  } catch (e) {
-    if (!mounted) return;
-    Navigator.pop(context); // ปิด loading ถ้ายังเปิดอยู่
-    _showError('Error: $e');
   }
-}
 
   Future<void> _deleteRecord() async {
-  showDialog(
-    context: context,
-    builder: (_) => AlertDialog(
-      title: const Text('ยืนยันการลบ'),
-      content: const Text('คุณแน่ใจหรือไม่ว่าต้องการลบข้อมูลทั้งหมดนี้?'),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('ยกเลิก')),
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-          onPressed: () async {
-            Navigator.pop(context); // ปิดกล่องยืนยัน
-            showDialog(
-              context: context,
-              barrierDismissible: false,
-              builder: (_) => const Center(child: CircularProgressIndicator()),
-            );
+    showDialog(
+      context: context,
+      builder:
+          (_) => AlertDialog(
+            title: const Text('ยืนยันการลบ'),
+            content: const Text('คุณแน่ใจหรือไม่ว่าต้องการลบข้อมูลทั้งหมดนี้?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('ยกเลิก'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                onPressed: () async {
+                  Navigator.pop(context); // ปิดกล่องยืนยัน
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder:
+                        (_) => const Center(child: CircularProgressIndicator()),
+                  );
 
-            final uri = Uri.http('10.0.2.2:80', '/api/delete_history.php');
-            try {
-              final res = await http.post(
-                uri,
-                headers: {'Content-Type': 'application/json'},
-                body: jsonEncode({'id': widget.record.id}),
-              );
+                  final uri = Uri.http(
+                    '10.0.2.2:80',
+                    '/api/delete_history.php',
+                  );
+                  try {
+                    final res = await http.post(
+                      uri,
+                      headers: {'Content-Type': 'application/json'},
+                      body: jsonEncode({'id': widget.record.id}),
+                    );
 
-              if (!mounted) return;
-              Navigator.pop(context); // ปิด loading
+                    if (!mounted) return;
+                    Navigator.pop(context); // ปิด loading
 
-              if (res.statusCode == 200) {
-                widget.onRecordUpdated();
-                if (!mounted) return;
-                Navigator.pop(context); // ปิด dialog แก้ไข
-                _showInfo('ลบข้อมูลเรียบร้อยแล้ว');
-              } else {
-                _showError('Failed to delete record with status code: ${res.statusCode}');
-              }
-            } catch (e) {
-              if (!mounted) return;
-              Navigator.pop(context); // ปิด loading
-              _showError('Error: $e');
-            }
-          },
-          child: const Text('ลบ', style: TextStyle(color: Colors.white)),
-        ),
-      ],
-    ),
-  );
-}
-
+                    if (res.statusCode == 200) {
+                      widget.onRecordUpdated();
+                      if (!mounted) return;
+                      Navigator.pop(context); // ปิด dialog แก้ไข
+                      _showInfo('ลบข้อมูลเรียบร้อยแล้ว');
+                    } else {
+                      _showError(
+                        'Failed to delete record with status code: ${res.statusCode}',
+                      );
+                    }
+                  } catch (e) {
+                    if (!mounted) return;
+                    Navigator.pop(context); // ปิด loading
+                    _showError('Error: $e');
+                  }
+                },
+                child: const Text('ลบ', style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          ),
+    );
+  }
 
   // ---------- dialogs ----------
   void _showError(String msg) {
-  if (!mounted) return;
-  showDialog(
-    context: widget.parentContext, // 🔹 ใช้ parent
-    builder: (ctx) => AlertDialog(
-      title: const Text('ข้อผิดพลาด', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-      content: Text(msg),
-      actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('ตกลง'))],
-    ),
-  );
-}
+    if (!mounted) return;
+    showDialog(
+      context: widget.parentContext, // 🔹 ใช้ parent
+      builder:
+          (ctx) => AlertDialog(
+            title: const Text(
+              'ข้อผิดพลาด',
+              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+            ),
+            content: Text(msg),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('ตกลง'),
+              ),
+            ],
+          ),
+    );
+  }
 
-void _showInfo(String msg) {
-  if (!mounted) return;
-  showDialog(
-    context: widget.parentContext, // 🔹 ใช้ parent
-    builder: (ctx) => AlertDialog(
-      title: const Text('สำเร็จ', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
-      content: Text(msg),
-      actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('ตกลง'))],
-    ),
-  );
-}
+  void _showInfo(String msg) {
+    if (!mounted) return;
+    showDialog(
+      context: widget.parentContext, // 🔹 ใช้ parent
+      builder:
+          (ctx) => AlertDialog(
+            title: const Text(
+              'สำเร็จ',
+              style: TextStyle(
+                color: Colors.green,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            content: Text(msg),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('ตกลง'),
+              ),
+            ],
+          ),
+    );
+  }
 
   // ---------- UI ----------
   @override

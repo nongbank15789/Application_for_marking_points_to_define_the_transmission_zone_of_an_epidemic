@@ -6,7 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'map_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
-  final int userId; // รับ userId จาก login
+  final int userId;
 
   const ProfileScreen({super.key, required this.userId});
 
@@ -18,13 +18,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Map<String, dynamic>? userData;
   bool isLoading = true;
   String errorMessage = "";
-
-  File? _avatarFile; // เก็บรูปจากเครื่อง
+  File? _avatarFile;
 
   @override
   void initState() {
     super.initState();
-    fetchUser(widget.userId); // โหลดข้อมูลผู้ใช้
+    fetchUser(widget.userId);
   }
 
   Future<void> _uploadAvatar() async {
@@ -34,7 +33,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       'POST',
       Uri.parse("http://10.0.2.2/api/upload_avatar.php"),
     );
-    request.fields['stf_id'] = widget.userId.toString(); // ส่ง userId ไปด้วย
+    request.fields['stf_id'] = widget.userId.toString();
     request.files.add(
       await http.MultipartFile.fromPath('stf_avatar', _avatarFile!.path),
     );
@@ -47,7 +46,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       if (data['success'] == true) {
         setState(() {
-          userData!['stf_avatar'] = data['stf_avatar']; // อัปเดต path ใน state
+          userData!['stf_avatar'] = data['stf_avatar'];
         });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("✅ อัปโหลดรูปโปรไฟล์สำเร็จ")),
@@ -64,7 +63,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  // ฟังก์ชันเลือกรูปจาก Gallery
   Future<void> _pickImage() async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
@@ -74,7 +72,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _avatarFile = File(pickedFile.path);
       });
 
-      // ✅ อัปโหลดรูปไปเซิร์ฟเวอร์
       await _uploadAvatar();
     }
   }
@@ -93,20 +90,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
             userData = Map<String, dynamic>.from(data[0]);
             isLoading = false;
           });
-        } else if (data is Map && data.containsKey("error")) {
-          setState(() {
-            errorMessage = data["error"];
-            isLoading = false;
-          });
         } else {
           setState(() {
-            errorMessage = "Invalid data format";
+            errorMessage = "ไม่พบข้อมูลผู้ใช้";
             isLoading = false;
           });
         }
       } else {
         setState(() {
-          errorMessage = "Failed to load user (Code ${response.statusCode})";
+          errorMessage = "โหลดข้อมูลล้มเหลว (${response.statusCode})";
           isLoading = false;
         });
       }
@@ -134,13 +126,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF0077C2), Color(0xFF4FC3F7)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
+        color: Color(0xFFe6f5fc),
         child: SafeArea(
           child: Column(
             children: [
@@ -150,8 +136,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 leading: IconButton(
                   icon: const Icon(
                     Icons.arrow_back_ios,
-                    color: Colors.white,
-                    size: 24,
+                    color: Color(0xFF0277BD),
                   ),
                   onPressed: () {
                     Navigator.pop(context);
@@ -165,7 +150,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 title: const Text(
                   'โปรไฟล์',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: Color(0xFF0277BD),
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
                   ),
@@ -178,7 +163,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     children: [
                       const SizedBox(height: 20),
 
-                      // Avatar + ปุ่มเปลี่ยนรูป
+                      // Avatar
                       Stack(
                         alignment: Alignment.bottomRight,
                         children: [
@@ -211,7 +196,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               onTap: _pickImage,
                               child: Container(
                                 padding: const EdgeInsets.all(6),
-                                decoration: BoxDecoration(
+                                decoration: const BoxDecoration(
                                   color: Colors.blue,
                                   shape: BoxShape.circle,
                                 ),
@@ -228,46 +213,62 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                       const SizedBox(height: 30),
 
-                      // กล่องข้อมูลผู้ใช้
+                      // Info box
                       Container(
                         width: size.width * 0.85,
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFE0F7FA).withOpacity(0.9),
-                          borderRadius: BorderRadius.circular(25),
+                          color: Color(0xFFE6F5FC),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: Color.fromRGBO(
+                              155,
+                              210,
+                              230,
+                              1,
+                            ).withOpacity(0.75), // ขอบฟ้าอ่อน
+                            width: 1.5, // ความหนาของขอบ
+                          ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
-                              spreadRadius: 2,
+                              color: Colors.black.withOpacity(0.12),
                               blurRadius: 10,
-                              offset: const Offset(0, 5),
+                              offset: const Offset(0, 6),
                             ),
                           ],
                         ),
                         child: Column(
-                          mainAxisSize: MainAxisSize.min,
                           children: [
                             _buildInfoField(
                               "ชื่อ",
                               "${userData!['stf_fname']} ${userData!['stf_lname']}",
+                              icon: Icons.person,
                             ),
                             _buildInfoField(
                               "บทบาท",
                               userData!['role'] ?? "ผู้ใช้งาน",
+                              icon: Icons.badge,
                             ),
                             _buildInfoField(
                               "Username",
                               userData!['stf_username'] ?? "-",
+                              icon: Icons.account_circle,
                             ),
-                            _buildInfoField("Email", userData!['stf_email'] ?? "-"),
+                            _buildInfoField(
+                              "Email",
+                              userData!['stf_email'] ?? "-",
+                              icon: Icons.email,
+                            ),
                             _buildInfoField(
                               "รหัสผ่าน",
-                              userData!['stf_password'] ?? "-",
+                              "********",
                               obscureText: true,
+                              icon: Icons.lock,
                             ),
                           ],
                         ),
                       ),
+
                       const SizedBox(height: 30),
                     ],
                   ),
@@ -280,40 +281,48 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // Widget สำหรับแสดงแต่ละช่องข้อมูล
+  // สร้าง TextField แบบ Read-only + Icon
   Widget _buildInfoField(
     String label,
     String value, {
+    IconData? icon,
     bool obscureText = false,
   }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            "$label :",
-            style: TextStyle(
-              color: Colors.grey.shade700,
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-            ),
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: TextField(
+        enabled: false,
+        obscureText: obscureText,
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: icon != null ? Icon(icon, color: Colors.blue) : null,
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(
+            vertical: 16,
+            horizontal: 16,
           ),
-          const SizedBox(height: 4),
-          Text(
-            obscureText ? '********' : value,
-            style: const TextStyle(
-              color: Colors.black87,
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-            ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(15),
+            borderSide: BorderSide(color: Color.fromRGBO(
+                              155,
+                              210,
+                              230,
+                              1,
+                            )),
           ),
-          Container(
-            height: 1,
-            color: Colors.blue.shade300,
-            margin: const EdgeInsets.only(top: 4),
+          disabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(15),
+            borderSide: BorderSide(color: Color.fromRGBO(
+                              155,
+                              210,
+                              230,
+                              1,
+                            )),
           ),
-        ],
+        ),
+        controller: TextEditingController(text: value),
+        style: const TextStyle(color: Colors.black87, fontSize: 16),
       ),
     );
   }

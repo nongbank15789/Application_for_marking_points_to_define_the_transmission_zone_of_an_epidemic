@@ -412,23 +412,20 @@ class _AddDataScreenState extends State<AddDataScreen> {
 
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF0077C2), Color(0xFF4FC3F7)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
+        decoration: const BoxDecoration(color: Color(0xFFE6F5FC)),
         child: SafeArea(
           child: Column(
             children: [
               AppBar(
-                backgroundColor: Colors.transparent,
-                elevation: 0,
+                scrolledUnderElevation: 0,           // <- กันทึบเมื่อเลื่อน
+                surfaceTintColor: Colors.transparent, // <- กันการใส่ tint
+                shadowColor: Colors.transparent,
+                backgroundColor: const Color.fromARGB(0, 0, 0, 0), // สีฟ้าอ่อนคงที่
+                elevation: 0, // เพิ่มเงาเล็กน้อยให้ไม่โปร่งใส
                 leading: IconButton(
                   icon: const Icon(
                     Icons.arrow_back_ios,
-                    color: Colors.white,
+                    color: Color(0xFF0277BD),
                     size: 24,
                   ),
                   onPressed: () {
@@ -442,7 +439,7 @@ class _AddDataScreenState extends State<AddDataScreen> {
                 title: const Text(
                   'เพิ่มข้อมูลผู้ป่วย',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: Color(0xFF0277BD),
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
                   ),
@@ -455,8 +452,17 @@ class _AddDataScreenState extends State<AddDataScreen> {
                   child: Container(
                     padding: const EdgeInsets.all(25),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFE0F7FA).withOpacity(0.9),
-                      borderRadius: BorderRadius.circular(25),
+                      color: const Color(0xFFE0F7FA),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: Color.fromRGBO(
+                          155,
+                          210,
+                          230,
+                          1,
+                        ), // ขอบฟ้าอ่อน
+                        width: 1.5, // ความหนาของขอบ
+                      ),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(0.15),
@@ -605,7 +611,7 @@ class _AddDataScreenState extends State<AddDataScreen> {
                             border: const OutlineInputBorder(),
                             enabledBorder: OutlineInputBorder(
                               borderSide: BorderSide(
-                                color: Colors.blueGrey.shade300,
+                                color: Color.fromRGBO(155, 210, 230, 1),
                               ),
                             ),
                             focusedBorder: const OutlineInputBorder(
@@ -638,10 +644,8 @@ class _AddDataScreenState extends State<AddDataScreen> {
                 ),
                 child: Ink(
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF0277BD), Color(0xFF00BCD4)],
-                    ),
-                    borderRadius: BorderRadius.circular(30),
+                    color: Color.fromRGBO(13, 71, 161, 1),
+                    borderRadius: BorderRadius.circular(15),
                   ),
                   child: Container(
                     alignment: Alignment.center,
