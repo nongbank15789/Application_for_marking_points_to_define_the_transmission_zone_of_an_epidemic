@@ -8,7 +8,9 @@ import 'package:project/screens/auth_screen.dart';
 import 'drawer_list_item.dart';
 import 'profile_screen.dart';
 import 'filter_screen.dart';
-import 'history_screen.dart';
+// REMOVED: import 'history_screen.dart';
+import 'infected_history_screen.dart';     // <-- เพิ่ม
+import 'recovered_history_screen.dart';    // <-- เพิ่ม
 import 'add_data_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geocoding/geocoding.dart';
@@ -18,7 +20,7 @@ class MapScreen extends StatefulWidget {
   final int? userId;
   final double? latitude;
   final double? longitude;
-  final bool markMode; // โหมดมาร์กตำแหน่ง
+  final bool markMode;
 
   const MapScreen({
     super.key,
@@ -56,7 +58,6 @@ class _MapScreenState extends State<MapScreen> {
     'danger': 'ทั้งหมด',
   };
 
-  // ซ่อน InfoWindow ของ "มาร์กผู้ป่วย" ขณะมีปุ่มยืนยันด้านล่าง
   bool _suppressInfoWindows = false;
 
   CameraPosition? _currentCameraPosition;
@@ -69,23 +70,19 @@ class _MapScreenState extends State<MapScreen> {
   int? _selectedPatientId;
 
   bool _isBottomSheetVisible = false;
-  final ValueNotifier<String> _countdownVN = ValueNotifier<String>(
-    '0d 0h 0m 0s',
-  );
+  final ValueNotifier<String> _countdownVN = ValueNotifier<String>('0d 0h 0m 0s');
   Timer? _timer;
 
-  // 🔁 Auto-refresh timers
-  Timer? _autoRefreshTimer; // คำนวณสถานะหายแล้วใหม่เป็นระยะ (ไม่ยิง API)
-  Timer? _refetchTimer; // ดึงข้อมูลใหม่จากเซิร์ฟเวอร์เป็นระยะ
+  Timer? _autoRefreshTimer;
+  Timer? _refetchTimer;
 
   late final TextEditingController _searchController;
 
-  // Tip banner state (ล่าง)
   bool _showMarkTip = false;
   double _tipOpacity = 0.0;
   Timer? _tipTimer;
 
-  // === สำหรับปรับขนาด bottom sheet แบบไดนามิก (อ่านอย่างเดียว) ===
+  // bottom sheet dynamic size
   final GlobalKey _sheetContentKey = GlobalKey();
   double _sheetMinSize = 0.20;
   double _sheetMaxSize = 0.60;
@@ -103,7 +100,6 @@ class _MapScreenState extends State<MapScreen> {
       }
     });
 
-    // แสดงทิปเมื่อเข้าโหมด mark
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && widget.markMode) {
         _showMarkTip = true;
@@ -114,13 +110,11 @@ class _MapScreenState extends State<MapScreen> {
       }
     });
 
-    // 🔁 คำนวณ/รีเพนต์สถานะหายแล้วใหม่ทุก 30 วินาที (ไม่ยิง API)
     _autoRefreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       if (!mounted) return;
       _applyFilters();
     });
 
-    // 🔁 ดึงข้อมูลใหม่จากเซิร์ฟเวอร์ทุก 3 นาที (รวมถึงรายใหม่ที่เพิ่งเพิ่ม)
     _refetchTimer = Timer.periodic(const Duration(minutes: 3), (_) async {
       if (!mounted) return;
       await _fetchPatientData();
@@ -134,8 +128,8 @@ class _MapScreenState extends State<MapScreen> {
     _autoRefreshTimer?.cancel();
     _refetchTimer?.cancel();
     _searchController.dispose();
-    super.dispose();
     _countdownVN.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchUserData() async {
@@ -164,7 +158,6 @@ class _MapScreenState extends State<MapScreen> {
       final response = await http.get(
         Uri.parse("http://10.0.2.2/api/get_all_patients.php"),
       );
-
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         setState(() {
@@ -181,7 +174,6 @@ class _MapScreenState extends State<MapScreen> {
 
   bool _isRecovered(String? recoveryDateStr) {
     if (recoveryDateStr == null) return false;
-
     final s = recoveryDateStr.trim();
     if (s.isEmpty) return false;
 
@@ -191,129 +183,102 @@ class _MapScreenState extends State<MapScreen> {
     if (s.length == 10) {
       dt = DateTime(dt.year, dt.month, dt.day, 0, 0, 0);
     }
-
     final now = DateTime.now();
     return now.isAfter(dt) || now.isAtSameMomentAs(dt);
   }
 
   void _applyFilters() {
-    final filteredPatients =
-        _allPatients.where((patient) {
-          final isDiseaseMatch =
-              _activeFilters['disease'] == 'ทั้งหมด' ||
-              (patient['pat_epidemic']?.toString() ?? '') ==
-                  _activeFilters['disease'];
+    final filteredPatients = _allPatients.where((patient) {
+      final isDiseaseMatch =
+          _activeFilters['disease'] == 'ทั้งหมด' ||
+          (patient['pat_epidemic']?.toString() ?? '') == _activeFilters['disease'];
 
-          final isDangerMatch =
-              _activeFilters['danger'] == 'ทั้งหมด' ||
-              (patient['pat_danger_level']?.toString() ?? '') ==
-                  _activeFilters['danger'];
+      final isDangerMatch =
+          _activeFilters['danger'] == 'ทั้งหมด' ||
+          (patient['pat_danger_level']?.toString() ?? '') == _activeFilters['danger'];
 
-          bool isInfectionDateMatch = true;
-          if (_activeFilters['infectedDate'] != 'ทั้งหมด') {
-            final infectedDateString =
-                patient['pat_infection_date']?.toString();
-            if (infectedDateString != null && infectedDateString.isNotEmpty) {
-              final infectedDate = DateTime.tryParse(infectedDateString);
-              if (infectedDate != null) {
-                final now = DateTime.now();
-                final today = DateTime(now.year, now.month, now.day);
-                final patientDate = DateTime(
-                  infectedDate.year,
-                  infectedDate.month,
-                  infectedDate.day,
-                );
+      bool isInfectionDateMatch = true;
+      if (_activeFilters['infectedDate'] != 'ทั้งหมด') {
+        final infectedDateString = patient['pat_infection_date']?.toString();
+        if (infectedDateString != null && infectedDateString.isNotEmpty) {
+          final infectedDate = DateTime.tryParse(infectedDateString);
+          if (infectedDate != null) {
+            final now = DateTime.now();
+            final today = DateTime(now.year, now.month, now.day);
+            final patientDate = DateTime(infectedDate.year, infectedDate.month, infectedDate.day);
 
-                switch (_activeFilters['infectedDate']) {
-                  case 'วันนี้':
-                    isInfectionDateMatch = patientDate.isAtSameMomentAs(today);
-                    break;
-                  case 'สัปดาห์นี้':
-                    final startOfWeek = today.subtract(
-                      Duration(days: today.weekday - 1),
-                    );
-                    final endOfWeek = startOfWeek.add(const Duration(days: 7));
-                    isInfectionDateMatch =
-                        (patientDate.isAfter(startOfWeek) &&
-                            patientDate.isBefore(endOfWeek)) ||
-                        patientDate.isAtSameMomentAs(startOfWeek);
-                    break;
-                  case 'เดือนนี้':
-                    final startOfMonth = DateTime(now.year, now.month, 1);
-                    final endOfMonth = DateTime(now.year, now.month + 1, 1);
-                    isInfectionDateMatch =
-                        (patientDate.isAfter(startOfMonth) &&
-                            patientDate.isBefore(endOfMonth)) ||
-                        patientDate.isAtSameMomentAs(startOfMonth);
-                    break;
-                  case 'ปีนี้':
-                    final startOfYear = DateTime(now.year, 1, 1);
-                    final endOfYear = DateTime(now.year + 1, 1, 1);
-                    isInfectionDateMatch =
-                        (patientDate.isAfter(startOfYear) &&
-                            patientDate.isBefore(endOfYear)) ||
-                        patientDate.isAtSameMomentAs(startOfYear);
-                    break;
-                }
-              }
+            switch (_activeFilters['infectedDate']) {
+              case 'วันนี้':
+                isInfectionDateMatch = patientDate.isAtSameMomentAs(today);
+                break;
+              case 'สัปดาห์นี้':
+                final startOfWeek = today.subtract(Duration(days: today.weekday - 1));
+                final endOfWeek = startOfWeek.add(const Duration(days: 7));
+                isInfectionDateMatch =
+                    (patientDate.isAfter(startOfWeek) && patientDate.isBefore(endOfWeek)) ||
+                    patientDate.isAtSameMomentAs(startOfWeek);
+                break;
+              case 'เดือนนี้':
+                final startOfMonth = DateTime(now.year, now.month, 1);
+                final endOfMonth = DateTime(now.year, now.month + 1, 1);
+                isInfectionDateMatch =
+                    (patientDate.isAfter(startOfMonth) && patientDate.isBefore(endOfMonth)) ||
+                    patientDate.isAtSameMomentAs(startOfMonth);
+                break;
+              case 'ปีนี้':
+                final startOfYear = DateTime(now.year, 1, 1);
+                final endOfYear = DateTime(now.year + 1, 1, 1);
+                isInfectionDateMatch =
+                    (patientDate.isAfter(startOfYear) && patientDate.isBefore(endOfYear)) ||
+                    patientDate.isAtSameMomentAs(startOfYear);
+                break;
             }
           }
+        }
+      }
 
-          bool isRecoveryDateMatch = true;
-          if (_activeFilters['recoveryDate'] != 'ทั้งหมด') {
-            final recoveryDateString = patient['pat_recovery_date']?.toString();
-            if (recoveryDateString != null && recoveryDateString.isNotEmpty) {
-              final recoveryDate = DateTime.tryParse(recoveryDateString);
-              if (recoveryDate != null) {
-                final now = DateTime.now();
-                final today = DateTime(now.year, now.month, now.day);
-                final patientDate = DateTime(
-                  recoveryDate.year,
-                  recoveryDate.month,
-                  recoveryDate.day,
-                );
+      bool isRecoveryDateMatch = true;
+      if (_activeFilters['recoveryDate'] != 'ทั้งหมด') {
+        final recoveryDateString = patient['pat_recovery_date']?.toString();
+        if (recoveryDateString != null && recoveryDateString.isNotEmpty) {
+          final recoveryDate = DateTime.tryParse(recoveryDateString);
+          if (recoveryDate != null) {
+            final now = DateTime.now();
+            final today = DateTime(now.year, now.month, now.day);
+            final patientDate = DateTime(recoveryDate.year, recoveryDate.month, recoveryDate.day);
 
-                switch (_activeFilters['recoveryDate']) {
-                  case 'วันนี้':
-                    isRecoveryDateMatch = patientDate.isAtSameMomentAs(today);
-                    break;
-                  case 'สัปดาห์นี้':
-                    final startOfWeek = today.subtract(
-                      Duration(days: today.weekday - 1),
-                    );
-                    final endOfWeek = startOfWeek.add(const Duration(days: 7));
-                    isRecoveryDateMatch =
-                        (patientDate.isAfter(startOfWeek) &&
-                            patientDate.isBefore(endOfWeek)) ||
-                        patientDate.isAtSameMomentAs(startOfWeek);
-                    break;
-                  case 'เดือนนี้':
-                    final startOfMonth = DateTime(now.year, now.month, 1);
-                    final endOfMonth = DateTime(now.year, now.month + 1, 1);
-                    isRecoveryDateMatch =
-                        (patientDate.isAfter(startOfMonth) &&
-                            patientDate.isBefore(endOfMonth)) ||
-                        patientDate.isAtSameMomentAs(startOfMonth);
-                    break;
-                  case 'ปีนี้':
-                    final startOfYear = DateTime(now.year, 1, 1);
-                    final endOfYear = DateTime(now.year + 1, 1, 1);
-                    isRecoveryDateMatch =
-                        (patientDate.isAfter(startOfYear) &&
-                            patientDate.isBefore(endOfYear)) ||
-                        patientDate.isAtSameMomentAs(startOfYear);
-                    break;
-                }
-              }
+            switch (_activeFilters['recoveryDate']) {
+              case 'วันนี้':
+                isRecoveryDateMatch = patientDate.isAtSameMomentAs(today);
+                break;
+              case 'สัปดาห์นี้':
+                final startOfWeek = today.subtract(Duration(days: today.weekday - 1));
+                final endOfWeek = startOfWeek.add(const Duration(days: 7));
+                isRecoveryDateMatch =
+                    (patientDate.isAfter(startOfWeek) && patientDate.isBefore(endOfWeek)) ||
+                    patientDate.isAtSameMomentAs(startOfWeek);
+                break;
+              case 'เดือนนี้':
+                final startOfMonth = DateTime(now.year, now.month, 1);
+                final endOfMonth = DateTime(now.year, now.month + 1, 1);
+                isRecoveryDateMatch =
+                    (patientDate.isAfter(startOfMonth) && patientDate.isBefore(endOfMonth)) ||
+                    patientDate.isAtSameMomentAs(startOfMonth);
+                break;
+              case 'ปีนี้':
+                final startOfYear = DateTime(now.year, 1, 1);
+                final endOfYear = DateTime(now.year + 1, 1, 1);
+                isRecoveryDateMatch =
+                    (patientDate.isAfter(startOfYear) && patientDate.isBefore(endOfYear)) ||
+                    patientDate.isAtSameMomentAs(startOfYear);
+                break;
             }
           }
+        }
+      }
 
-          // ✅ นำทั้ง "ยังไม่หาย" และ "หายแล้ว" มาแสดง
-          return isDiseaseMatch &&
-              isDangerMatch &&
-              isInfectionDateMatch &&
-              isRecoveryDateMatch;
-        }).toList();
+      return isDiseaseMatch && isDangerMatch && isInfectionDateMatch && isRecoveryDateMatch;
+    }).toList();
 
     _addMarkersAndCirclesFromData(filteredPatients);
   }
@@ -326,8 +291,7 @@ class _MapScreenState extends State<MapScreen> {
 
     for (var patient in patientData) {
       try {
-        final int patId =
-            int.tryParse(patient['pat_id']?.toString() ?? '') ?? -1;
+        final int patId = int.tryParse(patient['pat_id']?.toString() ?? '') ?? -1;
         if (patId == -1) continue;
 
         final double lat =
@@ -335,26 +299,21 @@ class _MapScreenState extends State<MapScreen> {
         final double lng =
             double.tryParse(patient['pat_longitude']?.toString() ?? '') ?? 0.0;
         final String name = patient['pat_name']?.toString() ?? 'ไม่ระบุ';
-        final String danger =
-            patient['pat_danger_level']?.toString() ?? 'ไม่ระบุ';
+        final String danger = patient['pat_danger_level']?.toString() ?? 'ไม่ระบุ';
         final String description =
             patient['pat_description']?.toString() ?? 'ไม่มีคำอธิบาย';
         final double dangerRange =
-            double.tryParse(patient['pat_danger_range']?.toString() ?? '0') ??
-            0;
-        final String infectedDisease =
-            patient['pat_epidemic']?.toString() ?? 'ไม่ระบุ';
-        final String recoveryDate =
-            patient['pat_recovery_date']?.toString() ?? '';
+            double.tryParse(patient['pat_danger_range']?.toString() ?? '0') ?? 0;
+        final String infectedDisease = patient['pat_epidemic']?.toString() ?? 'ไม่ระบุ';
+        final String recoveryDate = patient['pat_recovery_date']?.toString() ?? '';
 
         final bool recovered = _isRecovered(recoveryDate);
 
-        // ✅ สีมาร์ก
         final double hueColor;
         Color circleColor;
         if (recovered) {
-          hueColor = BitmapDescriptor.hueGreen; // หายแล้ว = เขียว
-          circleColor = Colors.transparent; // ไม่ใช้วงกลม
+          hueColor = BitmapDescriptor.hueGreen;
+          circleColor = Colors.transparent;
         } else {
           switch (danger) {
             case 'มาก':
@@ -378,16 +337,14 @@ class _MapScreenState extends State<MapScreen> {
         final Marker newMarker = Marker(
           markerId: MarkerId('patient_$patId'),
           position: LatLng(lat, lng),
-          infoWindow:
-              _suppressInfoWindows
-                  ? const InfoWindow()
-                  : InfoWindow(
-                    title: 'ผู้ป่วย: $name',
-                    snippet:
-                        recovered
-                            ? 'สถานะ: หายแล้ว\nโรค: $infectedDisease'
-                            : 'ระดับความอันตราย: $danger\nโรค: $infectedDisease',
-                  ),
+          infoWindow: _suppressInfoWindows
+              ? const InfoWindow()
+              : InfoWindow(
+                  title: 'ผู้ป่วย: $name',
+                  snippet: recovered
+                      ? 'สถานะ: หายแล้ว\nโรค: $infectedDisease'
+                      : 'ระดับความอันตราย: $danger\nโรค: $infectedDisease',
+                ),
           icon: BitmapDescriptor.defaultMarkerWithHue(hueColor),
           onTap: () {
             _updateBottomSheet(
@@ -404,7 +361,6 @@ class _MapScreenState extends State<MapScreen> {
         setState(() {
           _patientMarkers.add(newMarker);
 
-          // ✅ วาดวงกลมเฉพาะ “ยังไม่หาย” เท่านั้น
           if (!recovered && dangerRange > 0) {
             _dangerCircles.add(
               Circle(
@@ -432,7 +388,6 @@ class _MapScreenState extends State<MapScreen> {
     String disease,
     String recoveryDate,
   ) {
-    // ถ้ามีปุ่มยืนยันตำแหน่งอยู่ ไม่ให้แผงข้อมูลขึ้นมา
     if (_confirmBarVisible) return;
 
     _timer?.cancel();
@@ -457,7 +412,6 @@ class _MapScreenState extends State<MapScreen> {
     _recalcSheetSizesOnce();
   }
 
-  // ✅ ปรับไม่ให้ลบมาร์ก/วงกลมเมื่อถึงวันหาย
   void _startCountdown(String recoveryDate) {
     try {
       final recoveryDateTime = DateTime.parse(recoveryDate);
@@ -473,7 +427,6 @@ class _MapScreenState extends State<MapScreen> {
         if (remainingTime.isNegative) {
           timer.cancel();
           _countdownVN.value = 'หายแล้ว';
-          // อัปเดตสีมาร์ก/วงกลมเฉพาะตอนสิ้นสุดการนับ
           if (mounted) _applyFilters();
         } else {
           final days = remainingTime.inDays;
@@ -495,9 +448,6 @@ class _MapScreenState extends State<MapScreen> {
     setState(() {
       _isBottomSheetVisible = false;
     });
-    setState(() {
-      _isBottomSheetVisible = false;
-    });
   }
 
   Future<void> _loadUserId() async {
@@ -508,7 +458,6 @@ class _MapScreenState extends State<MapScreen> {
     _fetchUserData();
   }
 
-  // ===== Logout แบบชัวร์
   Future<void> _logout() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -571,7 +520,7 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   void _safeSetDefaultCenter() {
-    _center ??= const LatLng(13.7563, 100.5018); // Bangkok fallback
+    _center ??= const LatLng(13.7563, 100.5018);
   }
 
   Future<void> _determinePosition({bool forceCurrent = false}) async {
@@ -673,7 +622,7 @@ class _MapScreenState extends State<MapScreen> {
       _userMarkers.clear();
       _isBottomSheetVisible = false;
       _timer?.cancel();
-      _suppressInfoWindows = true; // ซ่อน info ผู้ป่วยตอนมีปุ่มยืนยัน
+      _suppressInfoWindows = true;
     });
     final String markerIdVal = 'user_marker_${_userMarkers.length}';
     final MarkerId markerId = MarkerId(markerIdVal);
@@ -700,10 +649,7 @@ class _MapScreenState extends State<MapScreen> {
                       Navigator.of(ctx).pop();
                       _removeMarker(markerId);
                     },
-                    child: const Text(
-                      'ลบ',
-                      style: TextStyle(color: Colors.red),
-                    ),
+                    child: const Text('ลบ', style: TextStyle(color: Colors.red)),
                   ),
                 ],
               );
@@ -731,9 +677,9 @@ class _MapScreenState extends State<MapScreen> {
       _userMarkers.clear();
       _lastMarkerLat = null;
       _lastMarkerLng = null;
-      _suppressInfoWindows = false; // กลับมาแสดง InfoWindow ผู้ป่วยตามปกติ
+      _suppressInfoWindows = false;
     });
-    _applyFilters(); // รีเฟรชมาร์กผู้ป่วย (สำหรับ InfoWindow)
+    _applyFilters();
   }
 
   void _removeMarker(MarkerId markerId) {
@@ -747,13 +693,10 @@ class _MapScreenState extends State<MapScreen> {
 
   void _showSnackBar(String message) {
     if (mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(message)));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
     }
   }
 
-  // ===== Tip แบนเนอร์ด้านล่าง (แสดงเมื่อ markMode = true) =====
   Widget _buildBottomTipBanner() {
     if (!_showMarkTip) return const SizedBox.shrink();
     final bottomInset = MediaQuery.of(context).padding.bottom;
@@ -781,15 +724,9 @@ class _MapScreenState extends State<MapScreen> {
                 color: Colors.white.withOpacity(0.95),
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: const [
-                  BoxShadow(
-                    color: Colors.black26,
-                    blurRadius: 16,
-                    offset: Offset(0, 4),
-                  ),
+                  BoxShadow(color: Colors.black26, blurRadius: 16, offset: Offset(0, 4)),
                 ],
-                border: Border.all(
-                  color: const Color(0xFF0E47A1).withOpacity(0.2),
-                ),
+                border: Border.all(color: const Color(0xFF0E47A1).withOpacity(0.2)),
               ),
               child: Row(
                 children: [
@@ -818,11 +755,8 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
-  // ===== แถบปุ่มยืนยันด้านล่าง (มี "ลบมาร์ก" + "ยืนยันตำแหน่ง") =====
   Widget _buildBottomConfirmBar() {
-    if (!(widget.markMode &&
-        _lastMarkerLat != null &&
-        _lastMarkerLng != null)) {
+    if (!(widget.markMode && _lastMarkerLat != null && _lastMarkerLng != null)) {
       return const SizedBox.shrink();
     }
     final bottomInset = MediaQuery.of(context).padding.bottom;
@@ -834,7 +768,6 @@ class _MapScreenState extends State<MapScreen> {
         top: false,
         child: Row(
           children: [
-            // ---- ลบมาร์ก ----
             Expanded(
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(14),
@@ -843,10 +776,7 @@ class _MapScreenState extends State<MapScreen> {
                   icon: const Icon(Icons.delete_outline),
                   label: const Text('ลบมาร์ก'),
                   style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 14,
-                      horizontal: 16,
-                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     minimumSize: const Size.fromHeight(0),
                     foregroundColor: Colors.red,
@@ -858,8 +788,6 @@ class _MapScreenState extends State<MapScreen> {
               ),
             ),
             const SizedBox(width: 12),
-
-            // ---- ยืนยันตำแหน่ง ----
             Expanded(
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(14),
@@ -868,10 +796,7 @@ class _MapScreenState extends State<MapScreen> {
                   icon: const Icon(Icons.check),
                   label: const Text('ยืนยันตำแหน่ง'),
                   style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 14,
-                      horizontal: 16,
-                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     minimumSize: const Size.fromHeight(0),
                     backgroundColor: const Color(0xFF0E47A1),
@@ -879,10 +804,7 @@ class _MapScreenState extends State<MapScreen> {
                     elevation: 6,
                   ),
                   onPressed: () {
-                    Navigator.pop(
-                      context,
-                      LatLng(_lastMarkerLat!, _lastMarkerLng!),
-                    );
+                    Navigator.pop(context, LatLng(_lastMarkerLat!, _lastMarkerLng!));
                   },
                 ),
               ),
@@ -893,7 +815,6 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
-  // === คำนวณขนาด sheet ให้พอดีกับเนื้อหา (เรียกครั้งเดียวตอนเปิด/อัปเดต) ===
   void _recalcSheetSizesOnce() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final ctx = _sheetContentKey.currentContext;
@@ -901,16 +822,14 @@ class _MapScreenState extends State<MapScreen> {
       if (box == null) return;
 
       final h = box.size.height;
-      if ((h - _lastMeasuredHeight).abs() < 8)
-        return; // เปลี่ยนไม่มาก ไม่ต้อง setState
+      if ((h - _lastMeasuredHeight).abs() < 8) return;
       _lastMeasuredHeight = h;
 
       final total = MediaQuery.of(context).size.height;
       final desired = (h / total).clamp(0.20, 0.90);
 
       if ((desired - _sheetMaxSize).abs() < 0.01 &&
-          (desired - _sheetInitialSize).abs() < 0.01)
-        return;
+          (desired - _sheetInitialSize).abs() < 0.01) return;
 
       setState(() {
         _sheetMaxSize = desired;
@@ -945,7 +864,7 @@ class _MapScreenState extends State<MapScreen> {
               }
             },
             onLongPress: (pos) {
-              _addMarker(pos); // แตะค้างเพื่อวางมาร์ก
+              _addMarker(pos);
             },
             onTap: (_) {
               if (_isBottomSheetVisible) _hideBottomSheet();
@@ -963,8 +882,6 @@ class _MapScreenState extends State<MapScreen> {
                 child: _buildBottomSheet(),
               ),
             ),
-
-          // ลำดับ: ปุ่มยืนยัน/ลบ (ล่างสุด) แล้วค่อยทิป
           _buildBottomConfirmBar(),
           if (widget.markMode) _buildBottomTipBanner(),
         ],
@@ -975,10 +892,7 @@ class _MapScreenState extends State<MapScreen> {
   Widget _buildDrawer(BuildContext context) {
     return Drawer(
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.only(
-          topRight: Radius.circular(25),
-          bottomRight: Radius.circular(25),
-        ),
+        borderRadius: BorderRadius.only(topRight: Radius.circular(25), bottomRight: Radius.circular(25)),
       ),
       width: MediaQuery.of(context).size.width * 0.75,
       child: Container(
@@ -989,14 +903,8 @@ class _MapScreenState extends State<MapScreen> {
             LayoutBuilder(
               builder: (BuildContext context, BoxConstraints constraints) {
                 return Container(
-                  margin: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 36,
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 16,
-                  ),
+                  margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 36),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                   decoration: BoxDecoration(
                     color: const Color(0xFFd6eeff),
                     borderRadius: BorderRadius.circular(20),
@@ -1006,23 +914,14 @@ class _MapScreenState extends State<MapScreen> {
                       CircleAvatar(
                         radius: 28,
                         backgroundColor: const Color(0xFFb5e4ff),
-                        backgroundImage:
-                            (userData != null &&
-                                    userData!['stf_avatar'] != null)
-                                ? NetworkImage(
-                                  "http://10.0.2.2/api/${userData!['stf_avatar']}",
-                                )
-                                : null,
-                        child:
-                            (userData == null ||
-                                    userData!['stf_avatar'] == null ||
-                                    userData!['stf_avatar'].toString().isEmpty)
-                                ? const Icon(
-                                  Icons.person,
-                                  size: 32,
-                                  color: Color.fromARGB(200, 14, 70, 161),
-                                )
-                                : null,
+                        backgroundImage: (userData != null && userData!['stf_avatar'] != null)
+                            ? NetworkImage("http://10.0.2.2/api/${userData!['stf_avatar']}")
+                            : null,
+                        child: (userData == null ||
+                                userData!['stf_avatar'] == null ||
+                                userData!['stf_avatar'].toString().isEmpty)
+                            ? const Icon(Icons.person, size: 32, color: Color.fromARGB(200, 14, 70, 161))
+                            : null,
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -1031,23 +930,12 @@ class _MapScreenState extends State<MapScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text(
-                              userData != null
-                                  ? "${userData!['stf_username']}"
-                                  : "ชื่อผู้ใช้",
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF0E47A1),
-                              ),
+                              userData != null ? "${userData!['stf_username']}" : "ชื่อผู้ใช้",
+                              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF0E47A1)),
                             ),
                             Text(
-                              userData != null
-                                  ? (userData!['stf_email'] ?? "")
-                                  : "example@email.com",
-                              style: const TextStyle(
-                                fontSize: 14,
-                                color: Colors.black54,
-                              ),
+                              userData != null ? (userData!['stf_email'] ?? "") : "example@email.com",
+                              style: const TextStyle(fontSize: 14, color: Colors.black54),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ],
@@ -1059,14 +947,7 @@ class _MapScreenState extends State<MapScreen> {
               },
             ),
 
-            const Divider(
-              thickness: 1,
-              height: 1,
-              indent: 16,
-              endIndent: 16,
-              color: Color.fromARGB(31, 0, 0, 0),
-            ),
-
+            const Divider(thickness: 1, height: 1, indent: 16, endIndent: 16, color: Color.fromARGB(31, 0, 0, 0)),
             const SizedBox(height: 16),
 
             DrawerListItem(
@@ -1075,16 +956,11 @@ class _MapScreenState extends State<MapScreen> {
               onTap: () {
                 if (userId != null) {
                   Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => ProfileScreen(userId: userId!),
-                    ),
-                  );
+                  Navigator.push(context, MaterialPageRoute(
+                    builder: (context) => ProfileScreen(userId: userId!),
+                  ));
                 } else {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(const SnackBar(content: Text('ไม่พบ userId')));
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ไม่พบ userId')));
                 }
               },
             ),
@@ -1093,13 +969,10 @@ class _MapScreenState extends State<MapScreen> {
               icon: Icons.tune_outlined,
               title: 'ตัวกรองแผนที่',
               onTap: () async {
-                final selectedFilters =
-                    await Navigator.push<Map<String, dynamic>>(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const FilterScreen(),
-                      ),
-                    );
+                final selectedFilters = await Navigator.push<Map<String, dynamic>>(
+                  context,
+                  MaterialPageRoute(builder: (context) => const FilterScreen()),
+                );
                 if (selectedFilters != null) {
                   setState(() {
                     _activeFilters = selectedFilters;
@@ -1109,6 +982,8 @@ class _MapScreenState extends State<MapScreen> {
               },
             ),
             const SizedBox(height: 6),
+
+            // ✅ ไปหน้า "ผู้ติดเชื้อ (ยังไม่หาย)"
             DrawerListItem(
               icon: Icons.history_outlined,
               title: 'ประวัติผู้ป่วย',
@@ -1116,13 +991,26 @@ class _MapScreenState extends State<MapScreen> {
                 Navigator.pop(context);
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) => const HistoryScreen(),
-                  ),
+                  MaterialPageRoute(builder: (context) => const InfectedHistoryScreen()),
                 );
               },
             ),
             const SizedBox(height: 6),
+
+            // ✅ ไปหน้า "ผู้ป่วยที่หายแล้ว"
+            DrawerListItem(
+              icon: Icons.verified_user_outlined,
+              title: 'ผู้ป่วยที่หายแล้ว',
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const RecoveredHistoryScreen()),
+                );
+              },
+            ),
+            const SizedBox(height: 6),
+
             DrawerListItem(
               icon: Icons.add_box_outlined,
               title: 'เพิ่มข้อมูลผู้ป่วย',
@@ -1132,19 +1020,16 @@ class _MapScreenState extends State<MapScreen> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder:
-                          (context) => AddDataScreen(
-                            latitude: _lastMarkerLat!,
-                            longitude: _lastMarkerLng!,
-                          ),
+                      builder: (context) => AddDataScreen(
+                        latitude: _lastMarkerLat!,
+                        longitude: _lastMarkerLng!,
+                      ),
                     ),
                   );
                 } else {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
-                      builder: (context) => const AddDataScreen(),
-                    ),
+                    MaterialPageRoute(builder: (context) => const AddDataScreen()),
                   );
                 }
               },
@@ -1174,76 +1059,58 @@ class _MapScreenState extends State<MapScreen> {
         decoration: const BoxDecoration(
           color: Color(0xFF084cc5),
           borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black26,
-              offset: Offset(0, 4),
-              blurRadius: 16,
-            ),
-          ],
+          boxShadow: [BoxShadow(color: Colors.black26, offset: Offset(0, 4), blurRadius: 16)],
         ),
         child: SafeArea(
           bottom: false,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(
-                        Icons.menu,
-                        color: Colors.white,
-                        size: 26,
-                      ),
-                      onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+            child: Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.menu, color: Colors.white, size: 26),
+                  onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Container(
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(20),
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Container(
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: Colors.transparent,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: _searchController,
-                                style: const TextStyle(color: Colors.white),
-                                decoration: const InputDecoration(
-                                  hintText: 'Search',
-                                  hintStyle: TextStyle(color: Colors.white),
-                                  border: InputBorder.none,
-                                ),
-                                textInputAction: TextInputAction.search,
-                                onSubmitted: (value) {
-                                  final q = value.trim();
-                                  if (q.isNotEmpty) _searchLocation(q);
-                                },
-                              ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _searchController,
+                            style: const TextStyle(color: Colors.white),
+                            decoration: const InputDecoration(
+                              hintText: 'Search',
+                              hintStyle: TextStyle(color: Colors.white),
+                              border: InputBorder.none,
                             ),
-                          ],
+                            textInputAction: TextInputAction.search,
+                            onSubmitted: (value) {
+                              final q = value.trim();
+                              if (q.isNotEmpty) _searchLocation(q);
+                            },
+                          ),
                         ),
-                      ),
+                      ],
                     ),
-                    const Spacer(),
-                    IconButton(
-                      icon: const Icon(
-                        Icons.search,
-                        color: Colors.white,
-                        size: 26,
-                      ),
-                      onPressed: () {
-                        final q = _searchController.text.trim();
-                        if (q.isNotEmpty) _searchLocation(q);
-                        _searchController.clear();
-                      },
-                    ),
-                  ],
-                );
-              },
+                  ),
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.search, color: Colors.white, size: 26),
+                  onPressed: () {
+                    final q = _searchController.text.trim();
+                    if (q.isNotEmpty) _searchLocation(q);
+                    _searchController.clear();
+                  },
+                ),
+              ],
             ),
           ),
         ),
@@ -1309,13 +1176,12 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
-  // === Bottom Sheet (อ่านอย่างเดียว + ปรับสูงตามเนื้อหา) ===
   Widget _buildBottomSheet() {
     return DraggableScrollableSheet(
       initialChildSize: _sheetInitialSize,
       minChildSize: _sheetMinSize,
       maxChildSize: _sheetMaxSize,
-      expand: false, // สำคัญ: ไม่กินเต็มจออัตโนมัติ
+      expand: false,
       builder: (context, scrollCtrl) {
         return Container(
           decoration: const BoxDecoration(
@@ -1325,15 +1191,13 @@ class _MapScreenState extends State<MapScreen> {
           child: SingleChildScrollView(
             controller: scrollCtrl,
             child: Padding(
-              key: _sheetContentKey, // ใช้วัดความสูงจริง
+              key: _sheetContentKey,
               padding: const EdgeInsets.all(16),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Center(
-                    child: Icon(Icons.drag_handle, color: Colors.grey),
-                  ),
+                  const Center(child: Icon(Icons.drag_handle, color: Colors.grey)),
                   const SizedBox(height: 8),
                   Row(
                     children: [
@@ -1357,17 +1221,11 @@ class _MapScreenState extends State<MapScreen> {
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      const Text(
-                        'ระดับความอันตราย: ',
-                        style: TextStyle(fontSize: 16),
-                      ),
+                      const Text('ระดับความอันตราย: ', style: TextStyle(fontSize: 16)),
                       Flexible(
                         child: Text(
                           _bottomSheetDanger,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            color: Colors.red,
-                          ),
+                          style: const TextStyle(fontSize: 16, color: Colors.red),
                           overflow: TextOverflow.ellipsis,
                           maxLines: 1,
                         ),
@@ -1389,12 +1247,7 @@ class _MapScreenState extends State<MapScreen> {
                     ],
                   ),
                   const SizedBox(height: 12),
-
-                  // กล่องคำอธิบาย: อ่านอย่างเดียว (ไม่ใช้ TextField/Controller)
-                  const Text(
-                    'คำอธิบาย',
-                    style: TextStyle(fontSize: 12, color: Colors.black54),
-                  ),
+                  const Text('คำอธิบาย', style: TextStyle(fontSize: 12, color: Colors.black54)),
                   const SizedBox(height: 6),
                   Container(
                     width: double.infinity,
@@ -1404,13 +1257,10 @@ class _MapScreenState extends State<MapScreen> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: SelectableText(
-                      _bottomSheetDescription.isEmpty
-                          ? '—'
-                          : _bottomSheetDescription,
+                      _bottomSheetDescription.isEmpty ? '—' : _bottomSheetDescription,
                       style: const TextStyle(height: 1.35),
                     ),
                   ),
-
                   const SizedBox(height: 8),
                 ],
               ),
