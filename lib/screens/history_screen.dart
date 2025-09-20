@@ -542,12 +542,38 @@ class _EditHistoryRecordDialogState extends State<EditHistoryRecordDialog> {
                   children: [
                     TextField(
                       autofocus: true,
+                      cursorColor: const Color(
+                        0xFF0E47A1,
+                      ), // ✅ เปลี่ยนสี cursor (น้ำเงินเข้ม)
                       decoration: InputDecoration(
                         hintText: 'พิมพ์เพื่อค้นหา...',
-                        prefixIcon: const Icon(Icons.search),
+                        prefixIcon: const Icon(
+                          Icons.search,
+                          color: Color(0xFF0E47A1),
+                        ), // ไอคอนน้ำเงิน
                         isDense: true,
+                        filled: true,
+                        fillColor: Colors.grey[100], // พื้นหลังอ่อนๆ
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF0E47A1),
+                            width: 1.5,
+                          ), // ✅ กรอบน้ำเงิน
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF0E47A1),
+                            width: 1.5,
+                          ), // กรอบตอนปกติ
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF0E47A1),
+                            width: 2,
+                          ), // ✅ กรอบหนาขึ้นตอน focus
                         ),
                       ),
                       onChanged: filter,
@@ -602,11 +628,18 @@ class _EditHistoryRecordDialogState extends State<EditHistoryRecordDialog> {
                 ),
               ),
               actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: const Text('ยกเลิก'),
-                ),
-              ],
+  TextButton(
+    style: TextButton.styleFrom(
+      foregroundColor: const Color(0xFF0E47A1), // ✅ ข้อความปุ่มเป็นน้ำเงินเข้ม
+      textStyle: const TextStyle(
+        fontWeight: FontWeight.normal,
+        fontSize: 16,
+      ),
+    ),
+    onPressed: () => Navigator.pop(ctx),
+    child: const Text('ยกเลิก'),
+  ),
+],
             );
           },
         );
@@ -698,8 +731,8 @@ class _EditHistoryRecordDialogState extends State<EditHistoryRecordDialog> {
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
               primary: Color(0xFF0E47A1), // สีหัวปฏิทิน + ปุ่มยืนยัน
-              onPrimary: Colors.white, // สีตัวอักษรบนหัวปฏิทิน
-              onSurface: Colors.black87
+              onPrimary: Color.fromARGB(255, 255, 255, 255), // สีตัวอักษรบนหัวปฏิทิน
+              onSurface: Colors.black87,
             ),
             textButtonTheme: TextButtonThemeData(
               style: TextButton.styleFrom(

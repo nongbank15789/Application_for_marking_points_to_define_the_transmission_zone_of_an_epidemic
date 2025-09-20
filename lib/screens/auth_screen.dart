@@ -22,6 +22,7 @@ class _AuthScreenState extends State<AuthScreen> {
   bool showConfirmPassword = false;
   bool _busy = false; // กันกดรัว
   bool rememberMe = false; // จำฉัน
+  String? selectedRole; // เก็บค่า role ที่เลือก
 
   // Secure storage (Android Keystore / iOS Keychain)
   final _secure = const FlutterSecureStorage();
@@ -175,6 +176,11 @@ class _AuthScreenState extends State<AuthScreen> {
     if (_busy) return;
     if (!(_signupFormKey.currentState?.validate() ?? false)) return;
 
+    if (selectedRole == null) {
+      AppSnack.warn(context, 'กรุณาเลือกบทบาท');
+      return;
+    }
+
     FocusScope.of(context).unfocus();
 
     setState(() => _busy = true);
@@ -190,6 +196,7 @@ class _AuthScreenState extends State<AuthScreen> {
             body: json.encode({
               'name': nameController.text,
               'surname': surnameController.text,
+              'role': selectedRole,
               'username': signupUsernameController.text,
               'email': emailController.text,
               'password': signupPasswordController.text,
@@ -207,6 +214,7 @@ class _AuthScreenState extends State<AuthScreen> {
             isLogin = true;
             _signupFormKey.currentState?.reset();
             _signupAV = AutovalidateMode.disabled;
+            selectedRole = null; // reset role
           });
         }
       } else {
@@ -266,7 +274,7 @@ class _AuthScreenState extends State<AuthScreen> {
     final size = MediaQuery.of(context).size;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFE4F2FD),
+      backgroundColor: const Color.fromARGB(255, 255, 255, 255),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.only(bottom: 24),
@@ -580,6 +588,121 @@ class _AuthScreenState extends State<AuthScreen> {
             prefix: Icons.email_outlined,
           ),
         ),
+        const SizedBox(height: 16),
+
+        // ✅ Role dropdown
+        // ฟิลด์ Role ที่แสดงในฟอร์ม
+        TextFormField(
+          controller: TextEditingController(text: selectedRole ?? ''),
+          readOnly: true,
+          validator: (v) => v == null || v.isEmpty ? 'กรุณาเลือก Role' : null,
+          decoration: _roundedDecoration(
+            label: 'Role',
+            prefix: Icons.badge_outlined,
+            suffix: const Icon(Icons.arrow_drop_down),
+          ),
+          onTap: () async {
+            final role = await showDialog<String>(
+              context: context,
+              builder:
+                  (ctx) => AlertDialog(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    backgroundColor: const Color.fromARGB(255, 255, 255, 255),
+                    title: const Text(
+                      'เลือกบทบาท',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF0E47A1),
+                      ),
+                    ),
+                    content: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // ✅ ตัวเลือกที่ 1
+                        Material(
+                          color: Colors.white,
+                          elevation: 0,
+                          borderRadius: BorderRadius.circular(12),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(12),
+                            onTap: () => Navigator.pop(ctx, 'เจ้าหน้าที่รพสต.'),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 14,
+                              ),
+                              child: Row(
+                                children: const [
+                                  Icon(Icons.person, color: Color(0xFF0E47A1)),
+                                  SizedBox(width: 12),
+                                  Text(
+                                    'เจ้าหน้าที่รพสต.',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+
+                        // ✅ ตัวเลือกที่ 2
+                        Material(
+                          color: Colors.white,
+                          elevation: 0,
+                          borderRadius: BorderRadius.circular(12),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(12),
+                            onTap: () => Navigator.pop(ctx, 'อสม.'),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 14,
+                              ),
+                              child: Row(
+                                children: const [
+                                  Icon(
+                                    Icons.local_hospital,
+                                    color: Color(0xFF0E47A1),
+                                  ),
+                                  SizedBox(width: 12),
+                                  Text(
+                                    'อสม.',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    actions: [
+                      TextButton(
+                        style: TextButton.styleFrom(
+                          foregroundColor: const Color(0xFF0E47A1),
+                        ),
+                        onPressed: () => Navigator.pop(ctx),
+                        child: const Text('ยกเลิก'),
+                      ),
+                    ],
+                  ),
+            );
+
+            if (role != null) {
+              setState(() => selectedRole = role);
+            }
+          },
+        ),
+
         const SizedBox(height: 12),
         TextFormField(
           controller: signupUsernameController,
@@ -598,6 +721,7 @@ class _AuthScreenState extends State<AuthScreen> {
             prefix: Icons.alternate_email,
           ),
         ),
+
         const SizedBox(height: 12),
         TextFormField(
           controller: signupPasswordController,

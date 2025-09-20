@@ -714,127 +714,152 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   // ===== Tip แบนเนอร์ด้านล่าง (แสดงเมื่อ markMode = true) =====
-Widget _buildBottomTipBanner() {
-  if (!_showMarkTip) return const SizedBox.shrink();
-  final bottomInset = MediaQuery.of(context).padding.bottom;
+  Widget _buildBottomTipBanner() {
+    if (!_showMarkTip) return const SizedBox.shrink();
+    final bottomInset = MediaQuery.of(context).padding.bottom;
 
-  return Positioned(
-    left: 12,
-    right: 12,
-    bottom: 76 + bottomInset,
-    child: AnimatedSlide(
-      duration: const Duration(milliseconds: 250),
-      offset: _tipOpacity > 0 ? Offset.zero : const Offset(0, 0.2),
+    return Positioned(
+      left: 12,
+      right: 12,
+      bottom: 76 + bottomInset,
+      child: AnimatedSlide(
+        duration: const Duration(milliseconds: 250),
+        offset: _tipOpacity > 0 ? Offset.zero : const Offset(0, 0.2),
 
-      // <- สำคัญ: เมื่อ opacity = 0 ให้เลิก intercept การกด
-      child: IgnorePointer(
-        ignoring: _tipOpacity == 0,
+        // <- สำคัญ: เมื่อ opacity = 0 ให้เลิก intercept การกด
+        child: IgnorePointer(
+          ignoring: _tipOpacity == 0,
 
-        child: AnimatedOpacity(
-          duration: const Duration(milliseconds: 250),
-          opacity: _tipOpacity,
-          // ถ้าอยากให้หายไปจาก tree เลยหลังจาง ให้ย้าย _showMarkTip=false ที่ onEnd
-          onEnd: () {
-            if (_tipOpacity == 0 && mounted) {
-              setState(() => _showMarkTip = false); // (ทางเลือก)
-            }
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.95),
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 16, offset: Offset(0, 4))],
-              border: Border.all(color: const Color(0xFF0E47A1).withOpacity(0.2)),
-            ),
-            child: Row(
-              children: [
-                const CircleAvatar(
-                  backgroundColor: Color(0xFF0E47A1), radius: 18,
-                  child: Icon(Icons.add_location_alt, color: Colors.white),
+          child: AnimatedOpacity(
+            duration: const Duration(milliseconds: 250),
+            opacity: _tipOpacity,
+            // ถ้าอยากให้หายไปจาก tree เลยหลังจาง ให้ย้าย _showMarkTip=false ที่ onEnd
+            onEnd: () {
+              if (_tipOpacity == 0 && mounted) {
+                setState(() => _showMarkTip = false); // (ทางเลือก)
+              }
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.95),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Colors.black26,
+                    blurRadius: 16,
+                    offset: Offset(0, 4),
+                  ),
+                ],
+                border: Border.all(
+                  color: const Color(0xFF0E47A1).withOpacity(0.2),
                 ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Text('โหมดปักหมุด: แตะค้างบนแผนที่เพื่อวางมาร์ก\nจากนั้นกด “ยืนยันตำแหน่ง” ด้านล่าง', style: TextStyle(fontSize: 14, height: 1.3)),
-                ),
-                TextButton(onPressed: () => setState(() => _tipOpacity = 0.0), child: const Text('เข้าใจแล้ว')),
-              ],
+              ),
+              child: Row(
+                children: [
+                  const CircleAvatar(
+                    backgroundColor: Color(0xFF0E47A1),
+                    radius: 18,
+                    child: Icon(Icons.add_location_alt, color: Colors.white),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text(
+                      'โหมดปักหมุด: แตะค้างบนแผนที่เพื่อวางมาร์ก\nจากนั้นกด “ยืนยันตำแหน่ง” ด้านล่าง',
+                      style: TextStyle(fontSize: 14, height: 1.3),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => setState(() => _tipOpacity = 0.0),
+                    child: const Text('เข้าใจแล้ว'),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   // ===== แถบปุ่มยืนยันด้านล่าง (มี "ลบมาร์ก" + "ยืนยันตำแหน่ง") =====
-Widget _buildBottomConfirmBar() {
-  if (!(widget.markMode && _lastMarkerLat != null && _lastMarkerLng != null)) {
-    return const SizedBox.shrink();
-  }
-  final bottomInset = MediaQuery.of(context).padding.bottom;
-  return Positioned(
-    left: 12,
-    right: 12,
-    bottom: 12 + bottomInset,
-    child: SafeArea(
-      top: false,
-      child: Row(
-        children: [
-          // ---- ลบมาร์ก ----
-          Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(14),
-              clipBehavior: Clip.hardEdge, // สำคัญ: ให้ hit test ถูกตัดตามโค้ง
-              child: OutlinedButton.icon(
-                icon: const Icon(Icons.delete_outline),
-                label: const Text('ลบมาร์ก'),
-                style: OutlinedButton.styleFrom(
-                  // ให้ขนาดกดเท่าปุ่มจริง
-                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  minimumSize: const Size.fromHeight(0), // ไม่บังคับขนาดเกินจำเป็น
-                  foregroundColor: Colors.red,
-                  side: const BorderSide(color: Colors.red),
-                  backgroundColor: Colors.white,
+  Widget _buildBottomConfirmBar() {
+    if (!(widget.markMode &&
+        _lastMarkerLat != null &&
+        _lastMarkerLng != null)) {
+      return const SizedBox.shrink();
+    }
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+    return Positioned(
+      left: 12,
+      right: 12,
+      bottom: 12 + bottomInset,
+      child: SafeArea(
+        top: false,
+        child: Row(
+          children: [
+            // ---- ลบมาร์ก ----
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                clipBehavior:
+                    Clip.hardEdge, // สำคัญ: ให้ hit test ถูกตัดตามโค้ง
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.delete_outline),
+                  label: const Text('ลบมาร์ก'),
+                  style: OutlinedButton.styleFrom(
+                    // ให้ขนาดกดเท่าปุ่มจริง
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 14,
+                      horizontal: 16,
+                    ),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    minimumSize: const Size.fromHeight(
+                      0,
+                    ), // ไม่บังคับขนาดเกินจำเป็น
+                    foregroundColor: Colors.red,
+                    side: const BorderSide(color: Colors.red),
+                    backgroundColor: Colors.white,
+                  ),
+                  onPressed: _clearUserMarker,
                 ),
-                onPressed: _clearUserMarker,
               ),
             ),
-          ),
-          const SizedBox(width: 12),
+            const SizedBox(width: 12),
 
-          // ---- ยืนยันตำแหน่ง ----
-          Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(14),
-              clipBehavior: Clip.hardEdge,
-              child: ElevatedButton.icon(
-                icon: const Icon(Icons.check),
-                label: const Text('ยืนยันตำแหน่ง'),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  minimumSize: const Size.fromHeight(0),
-                  backgroundColor: const Color(0xFF0E47A1),
-                  foregroundColor: Colors.white,
-                  elevation: 6,
+            // ---- ยืนยันตำแหน่ง ----
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                clipBehavior: Clip.hardEdge,
+                child: ElevatedButton.icon(
+                  icon: const Icon(Icons.check),
+                  label: const Text('ยืนยันตำแหน่ง'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 14,
+                      horizontal: 16,
+                    ),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    minimumSize: const Size.fromHeight(0),
+                    backgroundColor: const Color(0xFF0E47A1),
+                    foregroundColor: Colors.white,
+                    elevation: 6,
+                  ),
+                  onPressed: () {
+                    Navigator.pop(
+                      context,
+                      LatLng(_lastMarkerLat!, _lastMarkerLng!),
+                    );
+                  },
                 ),
-                onPressed: () {
-                  Navigator.pop(
-                    context,
-                    LatLng(_lastMarkerLat!, _lastMarkerLng!),
-                  );
-                },
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
-}
-
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -906,13 +931,14 @@ Widget _buildBottomConfirmBar() {
                     vertical: 16,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color.fromARGB(255, 140, 195, 240),
+                    color: const Color(0xFFd6eeff),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Row(
                     children: [
                       CircleAvatar(
                         radius: 28,
+                        backgroundColor: const Color(0xFFb5e4ff),
                         backgroundImage:
                             (userData != null &&
                                     userData!['stf_avatar'] != null)
@@ -922,11 +948,12 @@ Widget _buildBottomConfirmBar() {
                                 : null,
                         child:
                             (userData == null ||
-                                    userData!['stf_avatar'] == null)
+                                    userData!['stf_avatar'] == null ||
+                                    userData!['stf_avatar'].toString().isEmpty)
                                 ? const Icon(
                                   Icons.person,
-                                  size: 28,
-                                  color: Colors.grey,
+                                  size: 32,
+                                  color: Color.fromARGB(200, 14, 70, 161),
                                 )
                                 : null,
                       ),

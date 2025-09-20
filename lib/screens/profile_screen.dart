@@ -134,7 +134,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
               backgroundColor: const Color.fromARGB(255, 255, 255, 255),
               elevation: 0,
               leading: IconButton(
-                icon: const Icon(Icons.arrow_back_ios, color: Color(0xFF0E47A1),size: 25),
+                icon: const Icon(
+                  Icons.arrow_back_ios,
+                  color: Color(0xFF0E47A1),
+                  size: 25,
+                ),
                 onPressed: () {
                   Navigator.pop(context);
                   Navigator.push(
@@ -157,7 +161,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             // Content
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(vertical: 30, horizontal: 40),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 30,
+                  horizontal: 40,
+                ),
                 child: Column(
                   children: [
                     // Avatar (modern style)
@@ -167,34 +174,66 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         Container(
                           padding: const EdgeInsets.all(5),
                           decoration: const BoxDecoration(
-                            color: Color(0xFFE0DFFF), // light purple
+                            color: Color(0xFFd6eeff), // light purple
                             shape: BoxShape.circle,
                           ),
                           child: CircleAvatar(
                             radius: 70,
-                            backgroundImage: _avatarFile != null
-                                ? FileImage(_avatarFile!)
-                                : (userData!['stf_avatar'] != null
-                                    ? NetworkImage("http://10.0.2.2/api/${userData!['stf_avatar']}")
-                                    : null) as ImageProvider?,
-                            child: (_avatarFile == null &&
-                                    userData!['stf_avatar'] == null)
-                                ? const Icon(Icons.person, size: 50, color: Colors.grey)
-                                : null,
+                            backgroundColor: const Color(0xFFedf8ff),
+                            backgroundImage:
+                                _avatarFile != null
+                                    ? FileImage(_avatarFile!)
+                                    : (userData!['stf_avatar'] != null &&
+                                                userData!['stf_avatar']
+                                                    .toString()
+                                                    .isNotEmpty
+                                            ? NetworkImage(
+                                              "http://10.0.2.2/api/${userData!['stf_avatar']}",
+                                            )
+                                            : null)
+                                        as ImageProvider?,
+                            child:
+                                (_avatarFile == null &&
+                                        (userData!['stf_avatar'] == null ||
+                                            userData!['stf_avatar']
+                                                .toString()
+                                                .isEmpty))
+                                    ? const Icon(
+                                      Icons.person,
+                                      size: 80,
+                                      color: Color.fromARGB(200, 14, 70, 161),
+                                    ) // ✅ ถ้าไม่มีรูป → แสดง icon
+                                    : null,
                           ),
                         ),
                         Positioned(
-                          bottom: 5,
-                          right:5,
-                          child: InkWell(
-                            onTap: _pickImage,
-                            child: Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: const BoxDecoration(
-                                color: Color(0xFF0E47A1), // blue-purple
-                                shape: BoxShape.circle,
+                          bottom: 6,
+                          right: 6,
+                          child: Material(
+                            color: Colors.transparent, // ให้พื้นหลังโปร่งใส
+                            shape: const CircleBorder(),
+                            elevation: 1, // เงาเบา ๆ
+                            child: InkWell(
+                              customBorder:
+                                  const CircleBorder(), // ✅ Ripple เป็นวงกลม
+                              onTap: _pickImage,
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: const BoxDecoration(
+                                  color: Color.fromARGB(
+                                    200,
+                                    8,
+                                    77,
+                                    197,
+                                  ), // พื้นหลังน้ำเงิน
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.camera_alt_outlined,
+                                  size: 22,
+                                  color: Colors.white,
+                                ),
                               ),
-                              child: const Icon(Icons.edit, size: 20, color: Colors.white),
                             ),
                           ),
                         ),
@@ -203,15 +242,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     const SizedBox(height: 30),
 
                     // Info fields
-                    _styledInfoField("ชื่อ", "${userData!['stf_fname']} ${userData!['stf_lname']}", icon: Icons.person_outline),
+                    _styledInfoField(
+                      "ชื่อ",
+                      "${userData!['stf_fname']} ${userData!['stf_lname']}",
+                      icon: Icons.person_outline,
+                    ),
                     const SizedBox(height: 15),
-                    _styledInfoField("บทบาท", userData!['role'] ?? "ผู้ใช้งาน", icon: Icons.badge_outlined),
+                    _styledInfoField(
+                      "บทบาท",
+                      userData!['stf_role'] ?? "-",
+                      icon: Icons.badge_outlined,
+                    ),
                     const SizedBox(height: 15),
-                    _styledInfoField("Username", userData!['stf_username'] ?? "-", icon: Icons.account_circle_outlined),
+                    _styledInfoField(
+                      "Username",
+                      userData!['stf_username'] ?? "-",
+                      icon: Icons.account_circle_outlined,
+                    ),
                     const SizedBox(height: 15),
-                    _styledInfoField("Email", userData!['stf_email'] ?? "-", icon: Icons.email_outlined),
+                    _styledInfoField(
+                      "Email",
+                      userData!['stf_email'] ?? "-",
+                      icon: Icons.email_outlined,
+                    ),
                     const SizedBox(height: 15),
-                    _styledInfoField("รหัสผ่าน", "********", icon: Icons.lock_outline),
+                    _styledInfoField(
+                      "รหัสผ่าน",
+                      "********",
+                      icon: Icons.lock_outline,
+                    ),
                     const SizedBox(height: 40),
                   ],
                 ),
@@ -224,11 +283,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   // Custom reusable styled field
-  Widget _styledInfoField(
-    String label,
-    String value, {
-    IconData? icon,
-  }) {
+  Widget _styledInfoField(String label, String value, {IconData? icon}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -249,16 +304,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 18),
           child: Row(
             children: [
-              if (icon != null)
-                Icon(icon, size: 25, color: Color(0xFF0E47A1)),
+              if (icon != null) Icon(icon, size: 25, color: Color(0xFF0E47A1)),
               if (icon != null) const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   value,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    color: Colors.black87,
-                  ),
+                  style: const TextStyle(fontSize: 15, color: Colors.black87),
                 ),
               ),
             ],
