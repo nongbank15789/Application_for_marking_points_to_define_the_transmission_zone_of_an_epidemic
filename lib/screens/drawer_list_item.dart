@@ -1,6 +1,6 @@
-  import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
-  class DrawerListItem extends StatelessWidget {
+class DrawerListItem extends StatelessWidget {
   final IconData icon;
   final String title;
   final VoidCallback onTap;
@@ -18,29 +18,34 @@
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        splashColor: Colors.blue.withOpacity(0.2),
-        highlightColor: Colors.blue.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16),
+        borderRadius: BorderRadius.circular(16),
+        splashColor: const Color.fromARGB(255, 135, 179, 214).withOpacity(0.1),
+        highlightColor: Colors.transparent, // ใช้ Container คุมสีเอง
+        child: Container(
+          width: 240, // 👈 กำหนดความกว้าง
+          height: 50, // 👈 กำหนดความสูง
+          margin: const EdgeInsets.symmetric(
+            horizontal: 10,
+            vertical: 10,
+          ),
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(0),
                 child: Icon(
                   icon,
-                  color: const Color.fromARGB(255, 255, 255, 255),
-                  size: 28,
+                  color: const Color(0xFF0E47A1),
+                  size: 26, // ลดนิดนึง
                 ),
               ),
-              const SizedBox(width: 18),
+              const SizedBox(width: 16),
               Expanded(
                 child: Text(
                   title,
-                  style: TextStyle(
-                    fontSize: 18,
+                  style: const TextStyle(
+                    fontSize: 18, // ลดลงเล็กน้อย
                     fontWeight: FontWeight.w600,
-                    color: const Color.fromARGB(255, 255, 255, 255),
+                    color: Color(0xFF0E47A1),
                   ),
                 ),
               ),
@@ -51,4 +56,3 @@
     );
   }
 }
-

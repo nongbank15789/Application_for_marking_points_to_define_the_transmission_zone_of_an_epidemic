@@ -125,205 +125,146 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
 
     return Scaffold(
-      body: Container(
-        color: Color(0xFFe6f5fc),
-        child: SafeArea(
-          child: Column(
-            children: [
-              AppBar(
-                backgroundColor: Colors.transparent,
-                elevation: 0,
-                leading: IconButton(
-                  icon: const Icon(
-                    Icons.arrow_back_ios,
-                    color: Color(0xFF0277BD),
-                  ),
-                  onPressed: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const MapScreen()),
-                    );
-                  },
-                ),
-                centerTitle: true,
-                title: const Text(
-                  'โปรไฟล์',
-                  style: TextStyle(
-                    color: Color(0xFF0277BD),
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                  ),
+      backgroundColor: Color.fromARGB(255, 255, 255, 255),
+      body: SafeArea(
+        child: Column(
+          children: [
+            // AppBar (เหมือนเดิม)
+            AppBar(
+              backgroundColor: const Color.fromARGB(255, 255, 255, 255),
+              elevation: 0,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back_ios, color: Color(0xFF0E47A1),size: 25),
+                onPressed: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const MapScreen()),
+                  );
+                },
+              ),
+              title: const Text(
+                'โปรไฟล์',
+                style: TextStyle(
+                  fontSize: 25,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF0E47A1),
                 ),
               ),
+              centerTitle: true,
+            ),
 
-              Expanded(
-                child: SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 20),
-
-                      // Avatar
-                      Stack(
-                        alignment: Alignment.bottomRight,
-                        children: [
-                          CircleAvatar(
+            // Content
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(vertical: 30, horizontal: 40),
+                child: Column(
+                  children: [
+                    // Avatar (modern style)
+                    Stack(
+                      alignment: Alignment.bottomRight,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(5),
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFE0DFFF), // light purple
+                            shape: BoxShape.circle,
+                          ),
+                          child: CircleAvatar(
                             radius: 70,
-                            backgroundColor: Colors.white,
-                            backgroundImage:
-                                _avatarFile != null
-                                    ? FileImage(_avatarFile!)
-                                    : (userData!['stf_avatar'] != null
-                                            ? NetworkImage(
-                                              "http://10.0.2.2/api/${userData!['stf_avatar']}",
-                                            )
-                                            : null)
-                                        as ImageProvider?,
-                            child:
-                                (_avatarFile == null &&
-                                        userData!['stf_avatar'] == null)
-                                    ? const Icon(
-                                      Icons.person,
-                                      size: 70,
-                                      color: Colors.grey,
-                                    )
-                                    : null,
+                            backgroundImage: _avatarFile != null
+                                ? FileImage(_avatarFile!)
+                                : (userData!['stf_avatar'] != null
+                                    ? NetworkImage("http://10.0.2.2/api/${userData!['stf_avatar']}")
+                                    : null) as ImageProvider?,
+                            child: (_avatarFile == null &&
+                                    userData!['stf_avatar'] == null)
+                                ? const Icon(Icons.person, size: 50, color: Colors.grey)
+                                : null,
                           ),
-                          Positioned(
-                            bottom: 0,
-                            right: 0,
-                            child: InkWell(
-                              onTap: _pickImage,
-                              child: Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: const BoxDecoration(
-                                  color: Colors.blue,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.edit,
-                                  color: Colors.white,
-                                  size: 20,
-                                ),
+                        ),
+                        Positioned(
+                          bottom: 5,
+                          right:5,
+                          child: InkWell(
+                            onTap: _pickImage,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF0E47A1), // blue-purple
+                                shape: BoxShape.circle,
                               ),
+                              child: const Icon(Icons.edit, size: 20, color: Colors.white),
                             ),
                           ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 30),
-
-                      // Info box
-                      Container(
-                        width: size.width * 0.85,
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: Color(0xFFE6F5FC),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: Color.fromRGBO(
-                              155,
-                              210,
-                              230,
-                              1,
-                            ).withOpacity(0.75), // ขอบฟ้าอ่อน
-                            width: 1.5, // ความหนาของขอบ
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.12),
-                              blurRadius: 10,
-                              offset: const Offset(0, 6),
-                            ),
-                          ],
                         ),
-                        child: Column(
-                          children: [
-                            _buildInfoField(
-                              "ชื่อ",
-                              "${userData!['stf_fname']} ${userData!['stf_lname']}",
-                              icon: Icons.person,
-                            ),
-                            _buildInfoField(
-                              "บทบาท",
-                              userData!['role'] ?? "ผู้ใช้งาน",
-                              icon: Icons.badge,
-                            ),
-                            _buildInfoField(
-                              "Username",
-                              userData!['stf_username'] ?? "-",
-                              icon: Icons.account_circle,
-                            ),
-                            _buildInfoField(
-                              "Email",
-                              userData!['stf_email'] ?? "-",
-                              icon: Icons.email,
-                            ),
-                            _buildInfoField(
-                              "รหัสผ่าน",
-                              "********",
-                              obscureText: true,
-                              icon: Icons.lock,
-                            ),
-                          ],
-                        ),
-                      ),
+                      ],
+                    ),
+                    const SizedBox(height: 30),
 
-                      const SizedBox(height: 30),
-                    ],
+                    // Info fields
+                    _styledInfoField("ชื่อ", "${userData!['stf_fname']} ${userData!['stf_lname']}", icon: Icons.person_outline),
+                    const SizedBox(height: 15),
+                    _styledInfoField("บทบาท", userData!['role'] ?? "ผู้ใช้งาน", icon: Icons.badge_outlined),
+                    const SizedBox(height: 15),
+                    _styledInfoField("Username", userData!['stf_username'] ?? "-", icon: Icons.account_circle_outlined),
+                    const SizedBox(height: 15),
+                    _styledInfoField("Email", userData!['stf_email'] ?? "-", icon: Icons.email_outlined),
+                    const SizedBox(height: 15),
+                    _styledInfoField("รหัสผ่าน", "********", icon: Icons.lock_outline),
+                    const SizedBox(height: 40),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Custom reusable styled field
+  Widget _styledInfoField(
+    String label,
+    String value, {
+    IconData? icon,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFFF3F6F9),
+            borderRadius: BorderRadius.circular(15),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 18),
+          child: Row(
+            children: [
+              if (icon != null)
+                Icon(icon, size: 25, color: Color(0xFF0E47A1)),
+              if (icon != null) const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    color: Colors.black87,
                   ),
                 ),
               ),
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  // สร้าง TextField แบบ Read-only + Icon
-  Widget _buildInfoField(
-    String label,
-    String value, {
-    IconData? icon,
-    bool obscureText = false,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: TextField(
-        enabled: false,
-        obscureText: obscureText,
-        decoration: InputDecoration(
-          labelText: label,
-          prefixIcon: icon != null ? Icon(icon, color: Colors.blue) : null,
-          filled: true,
-          fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(
-            vertical: 16,
-            horizontal: 16,
-          ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(15),
-            borderSide: BorderSide(color: Color.fromRGBO(
-                              155,
-                              210,
-                              230,
-                              1,
-                            )),
-          ),
-          disabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(15),
-            borderSide: BorderSide(color: Color.fromRGBO(
-                              155,
-                              210,
-                              230,
-                              1,
-                            )),
-          ),
-        ),
-        controller: TextEditingController(text: value),
-        style: const TextStyle(color: Colors.black87, fontSize: 16),
-      ),
+      ],
     );
   }
 }

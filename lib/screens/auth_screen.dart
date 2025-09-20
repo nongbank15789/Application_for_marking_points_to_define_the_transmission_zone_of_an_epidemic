@@ -266,7 +266,7 @@ class _AuthScreenState extends State<AuthScreen> {
     final size = MediaQuery.of(context).size;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F8FB),
+      backgroundColor: const Color(0xFFE4F2FD),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.only(bottom: 24),
@@ -368,9 +368,6 @@ class _AuthScreenState extends State<AuthScreen> {
                                 },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF0E47A1),
-                          disabledBackgroundColor: const Color(
-                            0xFF0E47A1,
-                          ).withOpacity(.5),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
                           ),
@@ -470,7 +467,7 @@ class _AuthScreenState extends State<AuthScreen> {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: Color(0xFF1181FF), width: 1.6),
+        borderSide: const BorderSide(color: Color(0xFF084cc5), width: 1.6),
       ),
     );
   }

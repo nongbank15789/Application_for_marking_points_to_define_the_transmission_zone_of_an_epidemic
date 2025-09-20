@@ -348,7 +348,7 @@ class _AddDataScreenState extends State<AddDataScreen> {
             borderSide: BorderSide(color: Colors.blueGrey.shade300),
           ),
           focusedBorder: const UnderlineInputBorder(
-            borderSide: BorderSide(color: Colors.blue, width: 2),
+            borderSide: BorderSide(color: Color(0xFF0E47A1), width: 2),
           ),
         ),
         style: const TextStyle(color: Colors.black87, fontSize: 16),
@@ -398,7 +398,7 @@ class _AddDataScreenState extends State<AddDataScreen> {
             borderSide: BorderSide(color: Colors.blueGrey.shade300),
           ),
           focusedBorder: const UnderlineInputBorder(
-            borderSide: BorderSide(color: Colors.blue, width: 2),
+            borderSide: BorderSide(color: Color(0xFF0E47A1), width: 2),
           ),
         ),
         style: const TextStyle(color: Colors.black87, fontSize: 16),
@@ -412,20 +412,27 @@ class _AddDataScreenState extends State<AddDataScreen> {
 
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(color: Color(0xFFE6F5FC)),
+        decoration: const BoxDecoration(
+          color: Color.fromARGB(255, 255, 255, 255),
+        ),
         child: SafeArea(
           child: Column(
             children: [
               AppBar(
-                scrolledUnderElevation: 0,           // <- กันทึบเมื่อเลื่อน
+                scrolledUnderElevation: 0, // <- กันทึบเมื่อเลื่อน
                 surfaceTintColor: Colors.transparent, // <- กันการใส่ tint
                 shadowColor: Colors.transparent,
-                backgroundColor: const Color.fromARGB(0, 0, 0, 0), // สีฟ้าอ่อนคงที่
+                backgroundColor: const Color.fromARGB(
+                  0,
+                  0,
+                  0,
+                  0,
+                ), // สีฟ้าอ่อนคงที่
                 elevation: 0, // เพิ่มเงาเล็กน้อยให้ไม่โปร่งใส
                 leading: IconButton(
                   icon: const Icon(
                     Icons.arrow_back_ios,
-                    color: Color(0xFF0277BD),
+                    color: Color(0xFF0E47A1),
                     size: 24,
                   ),
                   onPressed: () {
@@ -439,28 +446,26 @@ class _AddDataScreenState extends State<AddDataScreen> {
                 title: const Text(
                   'เพิ่มข้อมูลผู้ป่วย',
                   style: TextStyle(
-                    color: Color(0xFF0277BD),
+                    color: Color(0xFF0E47A1),
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 15),
               Expanded(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Container(
-                    padding: const EdgeInsets.all(25),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 25,
+                      horizontal: 25,
+                    ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFE0F7FA),
-                      borderRadius: BorderRadius.circular(10),
+                      color: const Color(0xFFEAF7FB),
+                      borderRadius: BorderRadius.circular(25),
                       border: Border.all(
-                        color: Color.fromRGBO(
-                          155,
-                          210,
-                          230,
-                          1,
-                        ), // ขอบฟ้าอ่อน
+                        color: Color(0xFF0E47A1), // ขอบฟ้าอ่อน
                         width: 1.5, // ความหนาของขอบ
                       ),
                       boxShadow: [
@@ -578,7 +583,7 @@ class _AddDataScreenState extends State<AddDataScreen> {
                                 child: IconButton(
                                   icon: const Icon(
                                     Icons.add_location_alt,
-                                    color: Colors.blue,
+                                    color: Color(0xFF0E47A1),
                                     size: 70,
                                   ),
                                   onPressed: () {
@@ -611,12 +616,12 @@ class _AddDataScreenState extends State<AddDataScreen> {
                             border: const OutlineInputBorder(),
                             enabledBorder: OutlineInputBorder(
                               borderSide: BorderSide(
-                                color: Color.fromRGBO(155, 210, 230, 1),
+                                color: Color(0xFF0E47A1).withOpacity(0.5),
                               ),
                             ),
                             focusedBorder: const OutlineInputBorder(
                               borderSide: BorderSide(
-                                color: Colors.blue,
+                                color: Color(0xFF0E47A1),
                                 width: 2,
                               ),
                             ),
@@ -627,44 +632,44 @@ class _AddDataScreenState extends State<AddDataScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 30),
-              ElevatedButton(
-                onPressed: _validateAndSave,
-                style: ElevatedButton.styleFrom(
-                  minimumSize: Size(size.width * 0.6, 50),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 40,
-                    vertical: 15,
-                  ),
-                  backgroundColor: Colors.transparent,
-                  shadowColor: Colors.transparent,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                ),
-                child: Ink(
-                  decoration: BoxDecoration(
-                    color: Color.fromRGBO(13, 71, 161, 1),
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                  child: Container(
-                    alignment: Alignment.center,
-                    constraints: BoxConstraints(
-                      minWidth: size.width * 0.6,
-                      minHeight: 50,
+              const SizedBox(height: 20),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(40, 0, 40, 0),
+                child: ElevatedButton(
+                  onPressed: _validateAndSave,
+                  style: ElevatedButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    elevation: 0,
+                    backgroundColor: const Color.fromARGB(0, 0, 0, 0),
+                    shadowColor: Colors.transparent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
                     ),
-                    child: const Text(
-                      'บันทึกข้อมูล',
-                      style: TextStyle(
-                        fontSize: 18,
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
+                  ),
+                  child: Ink(
+                    decoration: BoxDecoration(
+                      color: Color(0xFF0E47A1),
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    child: Container(
+                      alignment: Alignment.center,
+                      constraints: BoxConstraints(
+                        minWidth: size.width * 0.6,
+                        minHeight: 50,
+                      ),
+                      child: const Text(
+                        'บันทึกข้อมูล',
+                        style: TextStyle(
+                          fontSize: 18,
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 10),
             ],
           ),
         ),

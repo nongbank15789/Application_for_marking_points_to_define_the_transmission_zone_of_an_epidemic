@@ -123,7 +123,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(color: Color(0xFFe6f5fc)),
+        decoration: const BoxDecoration(
+          color: Color.fromARGB(255, 255, 255, 255),
+        ),
         child: SafeArea(
           child: Column(
             children: [
@@ -136,7 +138,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 leading: IconButton(
                   icon: const Icon(
                     Icons.arrow_back_ios,
-                    color: Color(0xFF0277BD),
+                    color: Color(0xFF0E47A1),
                     size: 24,
                   ),
                   onPressed: () {
@@ -150,7 +152,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 title: const Text(
                   'ประวัติผู้ป่วย',
                   style: TextStyle(
-                    color: Color(0xFF0277BD),
+                    color: Color(0xFF0E47A1),
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
                   ),
@@ -162,8 +164,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 height: 50,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.9),
+                  color: Color.fromARGB(255, 255, 255, 255),
                   borderRadius: BorderRadius.circular(25),
+                  border: Border.all(
+                    color: Colors.grey.withOpacity(0.5), // ขอบฟ้าอ่อน
+                    width: 1.5, // ความหนาของขอบ
+                  ),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withOpacity(0.1),
@@ -180,16 +186,19 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         controller: _searchController,
                         decoration: const InputDecoration(
                           hintText: 'Search',
-                          hintStyle: TextStyle(color: Colors.blueGrey),
+                          hintStyle: TextStyle(color: Colors.grey),
                           border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(vertical: 13.0),
+                          contentPadding: EdgeInsets.symmetric(
+                            vertical: 12.0,
+                            horizontal: 6,
+                          ),
                         ),
                         style: const TextStyle(color: Colors.black87),
                         onSubmitted: (_) => _performSearch(),
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.search, color: Colors.blueGrey),
+                      icon: const Icon(Icons.search, color: Colors.grey),
                       onPressed: _performSearch,
                     ),
                   ],
@@ -257,10 +266,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
       width: size.width * 0.9,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Color(0xFFE6F5FC),
+        color: Color(0xFFEAF7FB),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: Color.fromRGBO(155, 210, 230, 1), // ขอบฟ้าอ่อน
+          color: Color(0xFF0E47A1), // ขอบฟ้าอ่อน
           width: 1.5, // ความหนาของขอบ
         ),
         boxShadow: [
@@ -284,7 +293,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Color.fromRGBO(13, 71, 161, 1),
+                  color: Color(0xFF0D47A1),
                 ),
               ),
               Row(
@@ -292,7 +301,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   IconButton(
                     icon: const Icon(
                       Icons.location_on_outlined,
-                      color: Color.fromRGBO(13, 71, 161, 1),
+                      color: Color(0xFF0D47A1),
                       size: 24,
                     ),
                     onPressed: () {
@@ -323,7 +332,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   IconButton(
                     icon: const Icon(
                       Icons.fullscreen_outlined,
-                      color: Color.fromRGBO(13, 71, 161, 1),
+                      color: Color(0xFF0D47A1),
                       size: 24,
                     ),
                     onPressed: () => _showEditDialog(record),
@@ -332,11 +341,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
               ),
             ],
           ),
-          const Divider(
-            color: Color.fromRGBO(155, 210, 230, 1),
-            thickness: 1.5,
-            height: 20,
-          ),
+          const Divider(color: Color(0xFF0D47A1), thickness: 1, height: 10),
+          const SizedBox(height: 8),
           _buildInfoRow('โรคที่ติด', disease),
           const SizedBox(height: 8),
           Row(
@@ -364,9 +370,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
         Text(
           label,
           style: const TextStyle(
-            fontSize: 14,
+            fontSize: 16,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF0277BD),
+            color: Color(0xFF084cc5),
           ),
         ),
         const SizedBox(height: 4),
@@ -527,6 +533,7 @@ class _EditHistoryRecordDialogState extends State<EditHistoryRecordDialog> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
+              backgroundColor: const Color.fromARGB(255, 255, 255, 255),
               title: const Text('เลือก โรคที่ติด'),
               content: SizedBox(
                 width: double.maxFinite,
@@ -623,6 +630,7 @@ class _EditHistoryRecordDialogState extends State<EditHistoryRecordDialog> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
+            backgroundColor: const Color.fromARGB(255, 255, 255, 255),
             title: const Text('เลือกระดับความอันตราย'),
             content: SizedBox(
               width: double.maxFinite,
@@ -685,6 +693,23 @@ class _EditHistoryRecordDialogState extends State<EditHistoryRecordDialog> {
       initialDate: initialDate ?? DateTime.now(),
       firstDate: DateTime(2000),
       lastDate: DateTime(2101),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF0E47A1), // สีหัวปฏิทิน + ปุ่มยืนยัน
+              onPrimary: Colors.white, // สีตัวอักษรบนหัวปฏิทิน
+              onSurface: Colors.black87
+            ),
+            textButtonTheme: TextButtonThemeData(
+              style: TextButton.styleFrom(
+                foregroundColor: Color(0xFF0E47A1), // สีปุ่ม CANCEL/OK
+              ),
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
     if (picked != null) {
       setState(() => controller.text = _dateFormat.format(picked));
@@ -810,7 +835,10 @@ class _EditHistoryRecordDialogState extends State<EditHistoryRecordDialog> {
                     _showError('Error: $e');
                   }
                 },
-                child: const Text('ลบ', style: TextStyle(color: Colors.white)),
+                child: const Text(
+                  'ลบ',
+                  style: TextStyle(color: Color.fromARGB(255, 26, 22, 22)),
+                ),
               ),
             ],
           ),
@@ -867,18 +895,19 @@ class _EditHistoryRecordDialogState extends State<EditHistoryRecordDialog> {
   @override
   Widget build(BuildContext context) {
     return FractionallySizedBox(
-      widthFactor: 0.99,
+      widthFactor: 1,
       child: AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: const Color.fromARGB(255, 255, 255, 255),
         elevation: 10,
-        contentPadding: const EdgeInsets.all(24),
+        contentPadding: const EdgeInsets.all(20),
         title: const Text(
           'แก้ไขข้อมูล',
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF0077C2),
+            color: Color(0xFF0E47A1),
           ),
         ),
         content: SingleChildScrollView(
@@ -915,15 +944,15 @@ class _EditHistoryRecordDialogState extends State<EditHistoryRecordDialog> {
         ),
         actionsAlignment: MainAxisAlignment.spaceEvenly,
         actions: [
-          TextButton(
+          ElevatedButton(
             onPressed: () => Navigator.pop(context),
             style: TextButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              backgroundColor: const Color.fromARGB(255, 255, 255, 255),
+              foregroundColor: Colors.grey[700],
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
               ),
-              backgroundColor: Colors.white,
-              foregroundColor: Colors.grey[700],
             ),
             child: const Text('ยกเลิก'),
           ),
@@ -942,7 +971,7 @@ class _EditHistoryRecordDialogState extends State<EditHistoryRecordDialog> {
           ElevatedButton(
             onPressed: _saveChanges,
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF4FC3F7),
+              backgroundColor: const Color(0xFF0E47A1),
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               shape: RoundedRectangleBorder(
@@ -966,16 +995,16 @@ class _EditHistoryRecordDialogState extends State<EditHistoryRecordDialog> {
       keyboardType: keyboardType,
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(color: Colors.blueGrey[700]),
+        labelStyle: TextStyle(color: const Color.fromARGB(255, 2, 3, 3)),
         filled: true,
-        fillColor: Colors.grey[200],
+        fillColor: Colors.grey[100],
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF0077C2), width: 2),
+          borderSide: const BorderSide(color: Color(0xFF0E47A1), width: 2),
         ),
       ),
     );
@@ -989,20 +1018,20 @@ class _EditHistoryRecordDialogState extends State<EditHistoryRecordDialog> {
         labelText: 'โรคที่ติด',
         labelStyle: TextStyle(color: Colors.blueGrey[700]),
         filled: true,
-        fillColor: Colors.grey[200],
+        fillColor: Colors.grey[100],
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF0077C2), width: 2),
+          borderSide: const BorderSide(color: Color(0xFF0E47A1), width: 2),
         ),
         suffixIcon: IconButton(
           tooltip: 'เลือกรายการ',
           icon: const Icon(
             Icons.format_list_bulleted,
-            color: Color(0xFF0077C2),
+            color: Color(0xFF0E47A1),
           ),
           onPressed: _openDiseasePicker,
         ),
@@ -1019,20 +1048,20 @@ class _EditHistoryRecordDialogState extends State<EditHistoryRecordDialog> {
         labelText: 'ระดับความอันตราย',
         labelStyle: TextStyle(color: Colors.blueGrey[700]),
         filled: true,
-        fillColor: Colors.grey[200],
+        fillColor: Colors.grey[100],
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF0077C2), width: 2),
+          borderSide: const BorderSide(color: Color(0xFF0E47A1), width: 2),
         ),
         suffixIcon: IconButton(
           tooltip: 'เลือกระดับ',
           icon: const Icon(
             Icons.format_list_bulleted,
-            color: Color(0xFF0077C2),
+            color: Color(0xFF0E47A1),
           ),
           onPressed: _openDangerPicker,
         ),
@@ -1053,14 +1082,14 @@ class _EditHistoryRecordDialogState extends State<EditHistoryRecordDialog> {
         labelText: label,
         labelStyle: TextStyle(color: Colors.blueGrey[700]),
         filled: true,
-        fillColor: Colors.grey[200],
+        fillColor: Colors.grey[100],
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF0077C2), width: 2),
+          borderSide: const BorderSide(color: Color(0xFF0E47A1), width: 2),
         ),
       ),
     );
@@ -1074,17 +1103,17 @@ class _EditHistoryRecordDialogState extends State<EditHistoryRecordDialog> {
         labelText: label,
         labelStyle: TextStyle(color: Colors.blueGrey[700]),
         filled: true,
-        fillColor: Colors.grey[200],
+        fillColor: Colors.grey[100],
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF0077C2), width: 2),
+          borderSide: const BorderSide(color: Color(0xFF0E47A1), width: 2),
         ),
         suffixIcon: IconButton(
-          icon: const Icon(Icons.calendar_today, color: Color(0xFF0077C2)),
+          icon: const Icon(Icons.calendar_today, color: Color(0xFF0E47A1)),
           onPressed: () => _selectDate(context, controller),
         ),
       ),
@@ -1103,14 +1132,14 @@ class _EditHistoryRecordDialogState extends State<EditHistoryRecordDialog> {
         labelText: label,
         labelStyle: TextStyle(color: Colors.blueGrey[700]),
         filled: true,
-        fillColor: Colors.grey[200],
+        fillColor: Colors.grey[100],
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF0077C2), width: 2),
+          borderSide: const BorderSide(color: Color(0xFF0E47A1), width: 2),
         ),
         suffixText: 'เมตร',
         suffixStyle: TextStyle(color: Colors.blueGrey[700]),

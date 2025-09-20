@@ -33,7 +33,6 @@ class _MapScreenState extends State<MapScreen> {
   int? userId;
   LatLng? _center;
   bool _isLoading = true;
-  bool _showSearch = false;
 
   final _secure = const FlutterSecureStorage(); // << เพิ่ม
 
@@ -59,7 +58,6 @@ class _MapScreenState extends State<MapScreen> {
   int? _selectedPatientId;
 
   bool _isBottomSheetVisible = false;
-  bool _searchExpanded = false;
   String _countdownString = '0d 0h 0m 0s';
   Timer? _timer;
 
@@ -727,90 +725,93 @@ class _MapScreenState extends State<MapScreen> {
       width: MediaQuery.of(context).size.width * 0.75,
       child: Container(
         decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Color(0xFF2E8BFF), // ฟ้าสว่างด้านบน
-              Color(0xFF1A5DFF),
-            ],
-          ),
+          color: Color.fromARGB(255, 255, 255, 255),
         ),
-        child: ListView(
-          padding: EdgeInsets.zero,
+        child: Column(
           children: [
+            // 🔹 ส่วนโปรไฟล์
             LayoutBuilder(
               builder: (BuildContext context, BoxConstraints constraints) {
-                double headerHeight = MediaQuery.of(context).size.height * 0.25;
-                final double minContentHeight = 120.0;
-                final double minHeaderHeight =
-                    MediaQuery.of(context).padding.top + minContentHeight;
-                final double maxHeaderHeight =
-                    MediaQuery.of(context).size.height * 0.35;
-                headerHeight =
-                    headerHeight
-                        .clamp(minHeaderHeight, maxHeaderHeight)
-                        .toDouble();
-                return SizedBox(
-                  height: headerHeight,
-                  child: DrawerHeader(
-                    decoration: const BoxDecoration(),
-                    margin: EdgeInsets.zero,
-                    padding: const EdgeInsets.fromLTRB(16, 8, 8, 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Align(
-                          alignment: Alignment.topRight,
-                          child: IconButton(
-                            icon: const Icon(
-                              Icons.arrow_back_ios,
-                              color: Colors.white,
-                              size: 20,
+                return Container(
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 36,
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 16,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color.fromARGB(255, 140, 195, 240),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 28,
+                        backgroundImage:
+                            (userData != null &&
+                                    userData!['stf_avatar'] != null)
+                                ? NetworkImage(
+                                  "http://10.0.2.2/api/${userData!['stf_avatar']}",
+                                )
+                                : null,
+                        child:
+                            (userData == null ||
+                                    userData!['stf_avatar'] == null)
+                                ? const Icon(
+                                  Icons.person,
+                                  size: 28,
+                                  color: Colors.grey,
+                                )
+                                : null,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              userData != null
+                                  ? "${userData!['stf_username']}"
+                                  : "ชื่อผู้ใช้",
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF0E47A1),
+                              ),
                             ),
-                            onPressed: () => Navigator.pop(context),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(
-                              minWidth: 30,
-                              minHeight: 30,
+                            Text(
+                              userData != null
+                                  ? userData!['stf_email'] ?? ""
+                                  : "example@email.com",
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: Colors.black54,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
-                          ),
+                          ],
                         ),
-                        const Spacer(),
-                        CircleAvatar(
-                          radius: 40,
-                          backgroundImage:
-                              (userData != null &&
-                                      userData!['stf_avatar'] != null)
-                                  ? NetworkImage(
-                                    "http://10.0.2.2/api/${userData!['stf_avatar']}",
-                                  )
-                                  : null,
-                          child:
-                              (userData == null ||
-                                      userData!['stf_avatar'] == null)
-                                  ? const Icon(
-                                    Icons.person,
-                                    size: 40,
-                                    color: Colors.grey,
-                                  )
-                                  : null,
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          userData != null
-                              ? "${userData!['stf_fname']} ${userData!['stf_lname']}"
-                              : "ชื่อผู้ใช้",
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 );
               },
             ),
+
+            const Divider(
+              thickness: 1,
+              height: 1,
+              indent: 16,
+              endIndent: 16,
+              color: Color.fromARGB(31, 0, 0, 0),
+            ),
+
+            const SizedBox(height: 16),
+
+            // 🔹 เมนูอื่นๆ
             DrawerListItem(
               icon: Icons.person_outline,
               title: 'โปรไฟล์',
@@ -830,6 +831,7 @@ class _MapScreenState extends State<MapScreen> {
                 }
               },
             ),
+            const SizedBox(height: 6),
             DrawerListItem(
               icon: Icons.tune_outlined,
               title: 'ตัวกรองแผนที่',
@@ -849,6 +851,7 @@ class _MapScreenState extends State<MapScreen> {
                 }
               },
             ),
+            const SizedBox(height: 6),
             DrawerListItem(
               icon: Icons.history_outlined,
               title: 'ประวัติผู้ป่วย',
@@ -862,6 +865,7 @@ class _MapScreenState extends State<MapScreen> {
                 );
               },
             ),
+            const SizedBox(height: 6),
             DrawerListItem(
               icon: Icons.add_box_outlined,
               title: 'เพิ่มข้อมูลผู้ป่วย',
@@ -895,11 +899,15 @@ class _MapScreenState extends State<MapScreen> {
                 }
               },
             ),
+            // 🔹 ดันให้ Logout ไปชิดล่าง
+            const Spacer(),
+
             DrawerListItem(
               icon: Icons.logout_outlined,
               title: 'ออกจากระบบ',
-              onTap: _logout, // << ใช้ฟังก์ชันใหม่
+              onTap: _logout,
             ),
+            const SizedBox(height: 20), // เพิ่มระยะห่างจากขอบล่าง
           ],
         ),
       ),
@@ -914,16 +922,9 @@ class _MapScreenState extends State<MapScreen> {
       left: 0,
       right: 0,
       child: Container(
-        height: topInset + 64,
+        height: topInset + 60,
         decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Color(0xFF2E8BFF), // ฟ้าสว่างด้านบน
-              Color(0xFF1A5DFF),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
+          color: Color(0xFF084cc5),
           borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
           boxShadow: [
             BoxShadow(
@@ -939,9 +940,6 @@ class _MapScreenState extends State<MapScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: LayoutBuilder(
               builder: (context, constraints) {
-                // ความกว้างเมื่อขยาย: ทั้งแถบ ลบพื้นที่ปุ่มเมนู + เว้นระยะ
-                final double expandedWidth = constraints.maxWidth - 48 - 12;
-
                 return Row(
                   children: [
                     IconButton(
@@ -954,69 +952,55 @@ class _MapScreenState extends State<MapScreen> {
                     ),
                     const SizedBox(width: 10),
 
-                    if (_showSearch)
-                      Expanded(
-                        child: Container(
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: const Color.fromARGB(0, 0, 0, 0),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: TextField(
-                                  controller: _searchController,
-                                  style: const TextStyle(
+                    Expanded(
+                      child: Container(
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: const Color.fromARGB(0, 0, 0, 0),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: _searchController,
+                                style: const TextStyle(
+                                  color: Colors.white, // ← สีของข้อความที่พิมพ์
+                                ),
+                                decoration: const InputDecoration(
+                                  hintText: 'Search',
+                                  hintStyle: TextStyle(
                                     color:
-                                        Colors.white, // ← สีของข้อความที่พิมพ์
+                                        Colors
+                                            .white, // ← เปลี่ยนสี hint เป็นสีขาว
                                   ),
-                                  decoration: const InputDecoration(
-                                    hintText: 'ค้นหา...',
-                                    hintStyle: TextStyle(
-                                      color:
-                                          Colors
-                                              .white, // ← เปลี่ยนสี hint เป็นสีขาว
-                                    ),
-                                    border: InputBorder.none,
-                                    isDense: true,
-                                  ),
-                                  textInputAction: TextInputAction.search,
-                                  onSubmitted: (value) {
-                                    final q = value.trim();
-                                    if (q.isNotEmpty) _searchLocation(q);
-                                  },
+                                  border: InputBorder.none,
                                 ),
-                              ),
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.search_outlined,
-                                  color: Color.fromARGB(255, 255, 255, 255),
-                                ),
-                                onPressed: () {
-                                  final q = _searchController.text.trim();
+                                textInputAction: TextInputAction.search,
+                                onSubmitted: (value) {
+                                  final q = value.trim();
                                   if (q.isNotEmpty) _searchLocation(q);
-                                  setState(() => _showSearch = false);
-                                  _searchController.clear();
                                 },
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                      )
-                    else
-                      const Spacer(),
-                    if (!_showSearch)
-                      IconButton(
-                        icon: const Icon(
-                          Icons.search,
-                          color: Colors.white,
-                          size: 26,
-                        ),
-                        onPressed: () {
-                          setState(() => _showSearch = true);
-                        },
                       ),
+                    ),
+                    const Spacer(),
+
+                    IconButton(
+                      icon: const Icon(
+                        Icons.search,
+                        color: Colors.white,
+                        size: 26,
+                      ),
+                      onPressed: () {
+                        final q = _searchController.text.trim();
+                        if (q.isNotEmpty) _searchLocation(q);
+                        _searchController.clear();
+                      },
+                    ),
                   ],
                 );
               },
@@ -1026,17 +1010,18 @@ class _MapScreenState extends State<MapScreen> {
       ),
     );
   }
- 
+
   Widget _buildFloatingButtons() {
     final double topInset = MediaQuery.of(context).padding.top;
     return Positioned(
-      top: topInset + 130, // วางใต้ AppBar โค้ง
+      top: topInset + 80, // วางใต้ AppBar โค้ง
       right: 16,
       child: Column(
         children: [
           FloatingActionButton(
             mini: true,
             heroTag: "myLocationBtn",
+            backgroundColor: const Color.fromARGB(255, 255, 255, 255),
             onPressed: () => _determinePosition(forceCurrent: true),
             child: const Icon(Icons.my_location),
           ),
@@ -1044,6 +1029,7 @@ class _MapScreenState extends State<MapScreen> {
           FloatingActionButton(
             mini: true,
             heroTag: "zoomInBtn",
+            backgroundColor: const Color.fromARGB(255, 255, 255, 255),
             onPressed: () async {
               if (_controller.isCompleted) {
                 final controller = await _controller.future;
@@ -1056,6 +1042,7 @@ class _MapScreenState extends State<MapScreen> {
           FloatingActionButton(
             mini: true,
             heroTag: "compassBtn",
+            backgroundColor: const Color.fromARGB(255, 255, 255, 255),
             onPressed: () async {
               try {
                 if (_controller.isCompleted && _currentCameraPosition != null) {

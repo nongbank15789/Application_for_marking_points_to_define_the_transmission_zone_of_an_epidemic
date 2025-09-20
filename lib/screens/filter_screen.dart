@@ -14,7 +14,7 @@ class _FilterScreenState extends State<FilterScreen> {
   static const Color kPrimary = Color(0xFF0277BD);
   static const Color kPrimaryDark = Color(0xFF0D47A1);
   static const Color kCardBg = Color(0xFFEAF7FB);
-  static const Color kBorder = Color(0xFF9BD2E6);
+  static const Color kBorder = Color(0xFF0E47A1);
 
   // ===== Animation =====
   static const _anim = Duration(milliseconds: 220);
@@ -238,7 +238,6 @@ class _FilterScreenState extends State<FilterScreen> {
     );
   }
 
-  // ===== Pill (แนวตั้ง) + animation check =====
   Widget _pill({
     required String label,
     required bool selected,
@@ -257,7 +256,7 @@ class _FilterScreenState extends State<FilterScreen> {
             color: selected ? kPrimaryDark : Colors.white,
             borderRadius: BorderRadius.circular(28),
             border: Border.all(
-              color: selected ? kPrimaryDark : kBorder,
+              color: selected ? kPrimaryDark : const Color.fromARGB(255, 255, 255, 255),
               width: 1.2,
             ),
             boxShadow:
@@ -349,7 +348,7 @@ class _FilterScreenState extends State<FilterScreen> {
             style: const TextStyle(
               fontSize: 16.5,
               fontWeight: FontWeight.w700,
-              color: Color.fromRGBO(13, 71, 161, 1),
+              color: kPrimaryDark,
             ),
           ),
         ),
@@ -369,7 +368,7 @@ class _FilterScreenState extends State<FilterScreen> {
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
       decoration: BoxDecoration(
-        color: kCardBg,
+        color: const Color(0xFFEAF7FB),
         borderRadius: BorderRadius.circular(_cardRadius),
         boxShadow: [
           BoxShadow(
@@ -480,7 +479,7 @@ class _FilterScreenState extends State<FilterScreen> {
           ),
         ],
         border: Border.all(
-          color: const Color.fromRGBO(155, 210, 230, 1),
+          color: kBorder,
           width: 1,
         ),
       ),
@@ -489,7 +488,7 @@ class _FilterScreenState extends State<FilterScreen> {
         children: [
           _cardHeader(
             Icons.coronavirus_rounded,
-            'โรคที่ติด',
+            'โรคระบาด   ที่ติด',
             trailing:
                 _diseaseLoading
                     ? const SizedBox(
@@ -504,7 +503,7 @@ class _FilterScreenState extends State<FilterScreen> {
                           icon: const Icon(
                             Icons.refresh,
                             size: 18,
-                            color: kPrimary,
+                            color: Color(0xFF0277BD),
                           ),
                         )
                         : null),
@@ -544,7 +543,7 @@ class _FilterScreenState extends State<FilterScreen> {
     Widget box() => Container(
       height: _pillHeight,
       decoration: BoxDecoration(
-        color: const Color.fromRGBO(155, 210, 230, 1).withOpacity(0.55),
+        color: kCardBg,
         borderRadius: BorderRadius.circular(28),
       ),
     );
@@ -565,7 +564,7 @@ class _FilterScreenState extends State<FilterScreen> {
 
     return Scaffold(
       body: Container(
-        color: Color(0xFFE3F2FD),
+        color: Color.fromARGB(255, 255, 255, 255),
         child: SafeArea(
           child: Column(
             children: [
@@ -578,8 +577,8 @@ class _FilterScreenState extends State<FilterScreen> {
                 leading: IconButton(
                   icon: const Icon(
                     Icons.arrow_back_ios,
-                    color: kPrimary,
-                    size: 22,
+                    color: Color(0xFF0E47A1),
+                    size: 25,
                   ),
                   onPressed: () => Navigator.pop(context),
                 ),
@@ -587,7 +586,7 @@ class _FilterScreenState extends State<FilterScreen> {
                 title: const Text(
                   'ตัวกรองแผนที่',
                   style: TextStyle(
-                    color: Color(0xFF0277BD),
+                    color: Color(0xFF0E47A1),
                     fontSize: 26,
                     fontWeight: FontWeight.bold,
                   ),
@@ -597,13 +596,13 @@ class _FilterScreenState extends State<FilterScreen> {
                     onPressed: _resetAll,
                     child: const Text(
                       'ล้างค่า',
-                      style: TextStyle(color: Color(0xFF0277BD), fontSize: 16),
+                      style: TextStyle(color: Color.fromARGB(255, 255, 255, 255), fontSize: 16),
                     ),
                   ),
                 ],
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
 
               // ===== Layout 2 คอลัมน์ =====
               Expanded(
@@ -658,7 +657,7 @@ class _FilterScreenState extends State<FilterScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 12),
                     ],
                   ),
                 ),
@@ -666,7 +665,7 @@ class _FilterScreenState extends State<FilterScreen> {
 
               // ===== Confirm button =====
               Padding(
-                padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+                padding: const EdgeInsets.fromLTRB(40, 0, 40, 10),
                 child: SizedBox(
                   width: double.infinity,
                   height: 52,
@@ -691,7 +690,7 @@ class _FilterScreenState extends State<FilterScreen> {
                     ),
                     child: Ink(
                       decoration: BoxDecoration(
-                        color: const Color.fromRGBO(13, 71, 161, 1),
+                        color: const Color(0xFF0E47A1),
                         borderRadius: BorderRadius.circular(
                           15,
                         ), // ปรับเลขตามความโค้งที่ต้องการ
