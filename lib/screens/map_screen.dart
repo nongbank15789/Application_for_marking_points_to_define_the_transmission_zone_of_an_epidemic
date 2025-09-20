@@ -69,8 +69,14 @@ class _MapScreenState extends State<MapScreen> {
   int? _selectedPatientId;
 
   bool _isBottomSheetVisible = false;
-  String _countdownString = '0d 0h 0m 0s';
+  final ValueNotifier<String> _countdownVN = ValueNotifier<String>(
+    '0d 0h 0m 0s',
+  );
   Timer? _timer;
+
+  // 🔁 Auto-refresh timers
+  Timer? _autoRefreshTimer; // คำนวณสถานะหายแล้วใหม่เป็นระยะ (ไม่ยิง API)
+  Timer? _refetchTimer; // ดึงข้อมูลใหม่จากเซิร์ฟเวอร์เป็นระยะ
 
   late final TextEditingController _searchController;
 
@@ -78,6 +84,13 @@ class _MapScreenState extends State<MapScreen> {
   bool _showMarkTip = false;
   double _tipOpacity = 0.0;
   Timer? _tipTimer;
+
+  // === สำหรับปรับขนาด bottom sheet แบบไดนามิก (อ่านอย่างเดียว) ===
+  final GlobalKey _sheetContentKey = GlobalKey();
+  double _sheetMinSize = 0.20;
+  double _sheetMaxSize = 0.60;
+  double _sheetInitialSize = 0.30;
+  double _lastMeasuredHeight = 0;
 
   @override
   void initState() {
@@ -100,14 +113,29 @@ class _MapScreenState extends State<MapScreen> {
         });
       }
     });
+
+    // 🔁 คำนวณ/รีเพนต์สถานะหายแล้วใหม่ทุก 30 วินาที (ไม่ยิง API)
+    _autoRefreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (!mounted) return;
+      _applyFilters();
+    });
+
+    // 🔁 ดึงข้อมูลใหม่จากเซิร์ฟเวอร์ทุก 3 นาที (รวมถึงรายใหม่ที่เพิ่งเพิ่ม)
+    _refetchTimer = Timer.periodic(const Duration(minutes: 3), (_) async {
+      if (!mounted) return;
+      await _fetchPatientData();
+    });
   }
 
   @override
   void dispose() {
     _timer?.cancel();
     _tipTimer?.cancel();
+    _autoRefreshTimer?.cancel();
+    _refetchTimer?.cancel();
     _searchController.dispose();
     super.dispose();
+    _countdownVN.dispose();
   }
 
   Future<void> _fetchUserData() async {
@@ -280,15 +308,11 @@ class _MapScreenState extends State<MapScreen> {
             }
           }
 
-          final recovered = _isRecovered(
-            patient['pat_recovery_date']?.toString(),
-          );
-
+          // ✅ นำทั้ง "ยังไม่หาย" และ "หายแล้ว" มาแสดง
           return isDiseaseMatch &&
               isDangerMatch &&
               isInfectionDateMatch &&
-              isRecoveryDateMatch &&
-              !recovered;
+              isRecoveryDateMatch;
         }).toList();
 
     _addMarkersAndCirclesFromData(filteredPatients);
@@ -302,8 +326,6 @@ class _MapScreenState extends State<MapScreen> {
 
     for (var patient in patientData) {
       try {
-        if (_isRecovered(patient['pat_recovery_date']?.toString())) continue;
-
         final int patId =
             int.tryParse(patient['pat_id']?.toString() ?? '') ?? -1;
         if (patId == -1) continue;
@@ -325,36 +347,46 @@ class _MapScreenState extends State<MapScreen> {
         final String recoveryDate =
             patient['pat_recovery_date']?.toString() ?? '';
 
+        final bool recovered = _isRecovered(recoveryDate);
+
+        // ✅ สีมาร์ก
         final double hueColor;
         Color circleColor;
-        switch (danger) {
-          case 'มาก':
-            hueColor = BitmapDescriptor.hueRed;
-            circleColor = Colors.red;
-            break;
-          case 'ปานกลาง':
-            hueColor = BitmapDescriptor.hueOrange;
-            circleColor = Colors.orange;
-            break;
-          case 'น้อย':
-            hueColor = BitmapDescriptor.hueYellow;
-            circleColor = Colors.yellow.shade700;
-            break;
-          default:
-            hueColor = BitmapDescriptor.hueBlue;
-            circleColor = Colors.blue;
+        if (recovered) {
+          hueColor = BitmapDescriptor.hueGreen; // หายแล้ว = เขียว
+          circleColor = Colors.transparent; // ไม่ใช้วงกลม
+        } else {
+          switch (danger) {
+            case 'มาก':
+              hueColor = BitmapDescriptor.hueRed;
+              circleColor = Colors.red;
+              break;
+            case 'ปานกลาง':
+              hueColor = BitmapDescriptor.hueOrange;
+              circleColor = Colors.orange;
+              break;
+            case 'น้อย':
+              hueColor = BitmapDescriptor.hueYellow;
+              circleColor = Colors.yellow.shade700;
+              break;
+            default:
+              hueColor = BitmapDescriptor.hueBlue;
+              circleColor = Colors.blue;
+          }
         }
 
         final Marker newMarker = Marker(
           markerId: MarkerId('patient_$patId'),
           position: LatLng(lat, lng),
-          // แสดง/ซ่อน InfoWindow ของ "ผู้ป่วย" ตามสถานะ
           infoWindow:
               _suppressInfoWindows
-                  ? const InfoWindow() // ไม่มี title/snippet = ไม่แสดง InfoWindow
+                  ? const InfoWindow()
                   : InfoWindow(
                     title: 'ผู้ป่วย: $name',
-                    snippet: 'ระดับความอันตราย: $danger\nโรค: $infectedDisease',
+                    snippet:
+                        recovered
+                            ? 'สถานะ: หายแล้ว\nโรค: $infectedDisease'
+                            : 'ระดับความอันตราย: $danger\nโรค: $infectedDisease',
                   ),
           icon: BitmapDescriptor.defaultMarkerWithHue(hueColor),
           onTap: () {
@@ -369,18 +401,22 @@ class _MapScreenState extends State<MapScreen> {
           },
         );
 
-        final Circle newCircle = Circle(
-          circleId: CircleId('danger_zone_$patId'),
-          center: LatLng(lat, lng),
-          radius: dangerRange,
-          fillColor: circleColor.withOpacity(0.2),
-          strokeColor: circleColor.withOpacity(0.5),
-          strokeWidth: 2,
-        );
-
         setState(() {
           _patientMarkers.add(newMarker);
-          _dangerCircles.add(newCircle);
+
+          // ✅ วาดวงกลมเฉพาะ “ยังไม่หาย” เท่านั้น
+          if (!recovered && dangerRange > 0) {
+            _dangerCircles.add(
+              Circle(
+                circleId: CircleId('danger_zone_$patId'),
+                center: LatLng(lat, lng),
+                radius: dangerRange,
+                fillColor: circleColor.withOpacity(0.2),
+                strokeColor: circleColor.withOpacity(0.5),
+                strokeWidth: 2,
+              ),
+            );
+          }
         });
       } catch (e) {
         debugPrint("❌ Error parsing patient data: $e");
@@ -410,51 +446,55 @@ class _MapScreenState extends State<MapScreen> {
     });
 
     if (recoveryDate.isNotEmpty) {
-      _startCountdown(recoveryDate);
+      if (_isRecovered(recoveryDate)) {
+        _countdownVN.value = 'หายแล้ว';
+      } else {
+        _startCountdown(recoveryDate);
+      }
     } else {
-      setState(() => _countdownString = 'ไม่ระบุวันที่หาย');
+      _countdownVN.value = 'ไม่ระบุวันที่หาย';
     }
+    _recalcSheetSizesOnce();
   }
 
+  // ✅ ปรับไม่ให้ลบมาร์ก/วงกลมเมื่อถึงวันหาย
   void _startCountdown(String recoveryDate) {
     try {
       final recoveryDateTime = DateTime.parse(recoveryDate);
+
+      if (DateTime.now().isAfter(recoveryDateTime)) {
+        _countdownVN.value = 'หายแล้ว';
+        return;
+      }
+
+      _timer?.cancel();
       _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
         final remainingTime = recoveryDateTime.difference(DateTime.now());
         if (remainingTime.isNegative) {
           timer.cancel();
-          setState(() {
-            _countdownString = 'หายแล้ว';
-            if (_selectedPatientId != null) {
-              _patientMarkers.removeWhere(
-                (m) => m.markerId.value == 'patient_${_selectedPatientId!}',
-              );
-              _dangerCircles.removeWhere(
-                (c) => c.circleId.value == 'danger_zone_${_selectedPatientId!}',
-              );
-            }
-            _isBottomSheetVisible = false;
-          });
+          _countdownVN.value = 'หายแล้ว';
+          // อัปเดตสีมาร์ก/วงกลมเฉพาะตอนสิ้นสุดการนับ
+          if (mounted) _applyFilters();
         } else {
           final days = remainingTime.inDays;
           final hours = remainingTime.inHours % 24;
           final minutes = remainingTime.inMinutes % 60;
           final seconds = remainingTime.inSeconds % 60;
-          setState(() {
-            _countdownString = '${days}d ${hours}h ${minutes}m ${seconds}s';
-          });
+          _countdownVN.value = '${days}d ${hours}h ${minutes}m ${seconds}s';
         }
       });
     } catch (e) {
       debugPrint("❌ Error parsing recovery date: $e");
-      setState(() {
-        _countdownString = 'ไม่ระบุวันที่หาย';
-      });
+      _countdownVN.value = 'ไม่ระบุวันที่หาย';
     }
   }
 
   void _hideBottomSheet() {
     _timer?.cancel();
+    _countdownVN.value = '0d 0h 0m 0s';
+    setState(() {
+      _isBottomSheetVisible = false;
+    });
     setState(() {
       _isBottomSheetVisible = false;
     });
@@ -725,18 +765,14 @@ class _MapScreenState extends State<MapScreen> {
       child: AnimatedSlide(
         duration: const Duration(milliseconds: 250),
         offset: _tipOpacity > 0 ? Offset.zero : const Offset(0, 0.2),
-
-        // <- สำคัญ: เมื่อ opacity = 0 ให้เลิก intercept การกด
         child: IgnorePointer(
           ignoring: _tipOpacity == 0,
-
           child: AnimatedOpacity(
             duration: const Duration(milliseconds: 250),
             opacity: _tipOpacity,
-            // ถ้าอยากให้หายไปจาก tree เลยหลังจาง ให้ย้าย _showMarkTip=false ที่ onEnd
             onEnd: () {
               if (_tipOpacity == 0 && mounted) {
-                setState(() => _showMarkTip = false); // (ทางเลือก)
+                setState(() => _showMarkTip = false);
               }
             },
             child: Container(
@@ -802,21 +838,17 @@ class _MapScreenState extends State<MapScreen> {
             Expanded(
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(14),
-                clipBehavior:
-                    Clip.hardEdge, // สำคัญ: ให้ hit test ถูกตัดตามโค้ง
+                clipBehavior: Clip.hardEdge,
                 child: OutlinedButton.icon(
                   icon: const Icon(Icons.delete_outline),
                   label: const Text('ลบมาร์ก'),
                   style: OutlinedButton.styleFrom(
-                    // ให้ขนาดกดเท่าปุ่มจริง
                     padding: const EdgeInsets.symmetric(
                       vertical: 14,
                       horizontal: 16,
                     ),
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    minimumSize: const Size.fromHeight(
-                      0,
-                    ), // ไม่บังคับขนาดเกินจำเป็น
+                    minimumSize: const Size.fromHeight(0),
                     foregroundColor: Colors.red,
                     side: const BorderSide(color: Colors.red),
                     backgroundColor: Colors.white,
@@ -861,6 +893,35 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
+  // === คำนวณขนาด sheet ให้พอดีกับเนื้อหา (เรียกครั้งเดียวตอนเปิด/อัปเดต) ===
+  void _recalcSheetSizesOnce() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = _sheetContentKey.currentContext;
+      final box = ctx?.findRenderObject() as RenderBox?;
+      if (box == null) return;
+
+      final h = box.size.height;
+      if ((h - _lastMeasuredHeight).abs() < 8)
+        return; // เปลี่ยนไม่มาก ไม่ต้อง setState
+      _lastMeasuredHeight = h;
+
+      final total = MediaQuery.of(context).size.height;
+      final desired = (h / total).clamp(0.20, 0.90);
+
+      if ((desired - _sheetMaxSize).abs() < 0.01 &&
+          (desired - _sheetInitialSize).abs() < 0.01)
+        return;
+
+      setState(() {
+        _sheetMaxSize = desired;
+        _sheetInitialSize = desired;
+        if (_sheetInitialSize < _sheetMinSize) {
+          _sheetInitialSize = _sheetMinSize;
+        }
+      });
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading || _center == null) {
@@ -895,7 +956,13 @@ class _MapScreenState extends State<MapScreen> {
           ),
           _buildTopBar(),
           _buildFloatingButtons(),
-          if (_isBottomSheetVisible && !_confirmBarVisible) _buildBottomSheet(),
+          if (_isBottomSheetVisible && !_confirmBarVisible)
+            Positioned.fill(
+              child: Align(
+                alignment: Alignment.bottomCenter,
+                child: _buildBottomSheet(),
+              ),
+            ),
 
           // ลำดับ: ปุ่มยืนยัน/ลบ (ล่างสุด) แล้วค่อยทิป
           _buildBottomConfirmBar(),
@@ -1132,7 +1199,6 @@ class _MapScreenState extends State<MapScreen> {
                       onPressed: () => _scaffoldKey.currentState?.openDrawer(),
                     ),
                     const SizedBox(width: 10),
-
                     Expanded(
                       child: Container(
                         height: 36,
@@ -1243,75 +1309,115 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
+  // === Bottom Sheet (อ่านอย่างเดียว + ปรับสูงตามเนื้อหา) ===
   Widget _buildBottomSheet() {
     return DraggableScrollableSheet(
-      initialChildSize: 0.3,
-      minChildSize: 0.2,
-      maxChildSize: 0.6,
-      builder:
-          (context, scrollCtrl) => Container(
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
-            ),
-            child: ListView(
-              controller: scrollCtrl,
+      initialChildSize: _sheetInitialSize,
+      minChildSize: _sheetMinSize,
+      maxChildSize: _sheetMaxSize,
+      expand: false, // สำคัญ: ไม่กินเต็มจออัตโนมัติ
+      builder: (context, scrollCtrl) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+          ),
+          child: SingleChildScrollView(
+            controller: scrollCtrl,
+            child: Padding(
+              key: _sheetContentKey, // ใช้วัดความสูงจริง
               padding: const EdgeInsets.all(16),
-              children: [
-                const Center(
-                  child: Icon(Icons.drag_handle, color: Colors.grey),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    const Icon(Icons.location_on, color: Colors.red),
-                    const SizedBox(width: 8),
-                    Text(
-                      _bottomSheetTitle,
-                      style: const TextStyle(fontSize: 18),
-                    ),
-                    const Spacer(),
-                    Text(_countdownString),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    const Text(
-                      'ระดับความอันตราย: ',
-                      style: TextStyle(fontSize: 16),
-                    ),
-                    Text(
-                      _bottomSheetDanger,
-                      style: const TextStyle(fontSize: 16, color: Colors.red),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    const Text('โรค: ', style: TextStyle(fontSize: 16)),
-                    Text(
-                      _bottomSheetDisease,
-                      style: const TextStyle(fontSize: 16),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  maxLines: 4,
-                  controller: TextEditingController(
-                    text: _bottomSheetDescription,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Center(
+                    child: Icon(Icons.drag_handle, color: Colors.grey),
                   ),
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                    labelText: 'คำอธิบาย',
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Icon(Icons.location_on, color: Colors.red),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _bottomSheetTitle,
+                          style: const TextStyle(fontSize: 18),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      ValueListenableBuilder<String>(
+                        valueListenable: _countdownVN,
+                        builder: (_, txt, __) => Text(txt),
+                      ),
+                    ],
                   ),
-                  readOnly: true,
-                ),
-              ],
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Text(
+                        'ระดับความอันตราย: ',
+                        style: TextStyle(fontSize: 16),
+                      ),
+                      Flexible(
+                        child: Text(
+                          _bottomSheetDanger,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            color: Colors.red,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Text('โรค: ', style: TextStyle(fontSize: 16)),
+                      Flexible(
+                        child: Text(
+                          _bottomSheetDisease,
+                          style: const TextStyle(fontSize: 16),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  // กล่องคำอธิบาย: อ่านอย่างเดียว (ไม่ใช้ TextField/Controller)
+                  const Text(
+                    'คำอธิบาย',
+                    style: TextStyle(fontSize: 12, color: Colors.black54),
+                  ),
+                  const SizedBox(height: 6),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.black26),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: SelectableText(
+                      _bottomSheetDescription.isEmpty
+                          ? '—'
+                          : _bottomSheetDescription,
+                      style: const TextStyle(height: 1.35),
+                    ),
+                  ),
+
+                  const SizedBox(height: 8),
+                ],
+              ),
             ),
           ),
+        );
+      },
     );
   }
 }
