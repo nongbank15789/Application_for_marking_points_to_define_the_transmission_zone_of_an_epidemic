@@ -26,6 +26,10 @@ class _AddDataScreenState extends State<AddDataScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _submitted = false;
 
+  // ===== Date formats =====
+  final DateFormat _fmtDisplay = DateFormat('dd/MM/yyyy'); // โชว์ในช่อง
+  final DateFormat _fmtApi = DateFormat('yyyy-MM-dd');     // ส่งเข้า API
+
   // Controllers (ข้อมูลผู้ป่วย)
   final _nameController = TextEditingController();
   final _diseaseController = TextEditingController();
@@ -130,7 +134,6 @@ class _AddDataScreenState extends State<AddDataScreen> {
       _longitudeController.text = widget.longitude!.toStringAsFixed(6);
     }
 
-    // ไม่มีการกรอกที่อยู่อัตโนมัติแล้ว
     _fetchDiseases();
   }
 
@@ -160,6 +163,31 @@ class _AddDataScreenState extends State<AddDataScreen> {
     _addrPostcode.dispose();
     _addrLandmark.dispose();
     super.dispose();
+  }
+
+  // ===== THEME for popups & datepicker =====
+  Theme _popupTheme(BuildContext context, Widget child) {
+    final base = Theme.of(context);
+    return Theme(
+      data: base.copyWith(
+        colorScheme: const ColorScheme.light(
+          primary: _primary,
+          onPrimary: Colors.white,
+          surface: Colors.white,
+          onSurface: Colors.black87,
+        ),
+        dialogTheme: DialogThemeData(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          titleTextStyle: const TextStyle(
+            color: _primary, fontSize: 20, fontWeight: FontWeight.w700),
+        ),
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(foregroundColor: _primary),
+        ),
+      ),
+      child: child,
+    );
   }
 
   // ===== Load diseases from API =====
@@ -203,82 +231,109 @@ class _AddDataScreenState extends State<AddDataScreen> {
     }
   }
 
-  // ===== Dialog เลือกโรค + ค้นหา =====
+  // ===== Dialog เลือกโรค + ค้นหา (with theme) =====
   Future<String?> _showDiseasePickerWithSearch() async {
     String query = '';
     List<String> filtered = List.of(_diseaseOptions);
     return showDialog<String>(
       context: context,
       builder: (BuildContext dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setStateSB) {
-            void filter(String q) {
-              query = q;
-              final lower = q.toLowerCase();
-              filtered = _diseaseOptions.where((e) => e.toLowerCase().contains(lower)).toList();
-              setStateSB(() {});
-            }
+        return _popupTheme(
+          dialogContext,
+          StatefulBuilder(
+            builder: (context, setStateSB) {
+              void filter(String q) {
+                query = q;
+                final lower = q.toLowerCase();
+                filtered = _diseaseOptions.where((e) => e.toLowerCase().contains(lower)).toList();
+                setStateSB(() {});
+              }
 
-            return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              title: const Text('เลือก โรคที่ติด'),
-              content: SizedBox(
-                width: double.maxFinite,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(
-                      autofocus: true,
-                      decoration: InputDecoration(
-                        hintText: 'พิมพ์เพื่อค้นหา...',
-                        prefixIcon: const Icon(Icons.search),
-                        isDense: true,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+              return AlertDialog(
+                title: const Text('เลือก ชื่อโรค'),
+                content: SizedBox(
+                  width: double.maxFinite,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextField(
+                        autofocus: true,
+                        decoration: InputDecoration(
+                          hintText: 'พิมพ์เพื่อค้นหา...',
+                          prefixIcon: const Icon(Icons.search, color: _primary),
+                          isDense: true,
+                          focusedBorder: OutlineInputBorder(
+                            borderSide: const BorderSide(color: _primary, width: 2),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderSide: BorderSide(color: Colors.blueGrey.shade200),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        onChanged: filter,
                       ),
-                      onChanged: filter,
-                    ),
-                    const SizedBox(height: 10),
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxHeight: 320),
-                      child: filtered.isEmpty
-                          ? const Center(child: Text('ไม่พบรายการ'))
-                          : ListView.separated(
-                              shrinkWrap: true,
-                              itemCount: filtered.length,
-                              separatorBuilder: (_, __) => const Divider(height: 1),
-                              itemBuilder: (context, index) {
-                                final name = filtered[index];
-                                return ListTile(
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
-                                  title: Text(name, style: const TextStyle(fontSize: 18)),
-                                  onTap: () => Navigator.pop(dialogContext, name),
-                                );
-                              },
-                            ),
-                    ),
-                  ],
+                      const SizedBox(height: 10),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxHeight: 320),
+                        child: filtered.isEmpty
+                            ? const Center(child: Text('ไม่พบรายการ'))
+                            : ListView.separated(
+                                shrinkWrap: true,
+                                itemCount: filtered.length,
+                                separatorBuilder: (_, __) => const Divider(height: 1),
+                                itemBuilder: (context, index) {
+                                  final name = filtered[index];
+                                  return ListTile(
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
+                                    title: Text(name, style: const TextStyle(fontSize: 18)),
+                                    onTap: () => Navigator.pop(dialogContext, name),
+                                  );
+                                },
+                              ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              actions: [
-                TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('ยกเลิก')),
-              ],
-            );
-          },
+                actions: [
+                  TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('ยกเลิก')),
+                ],
+              );
+            },
+          ),
         );
       },
     );
   }
 
-  // ===== Date picker =====
+  // ===== Helper: แปลงวันที่ที่แสดง (dd/MM/yyyy) -> รูปแบบ API (yyyy-MM-dd) =====
+  String _toApiDate(String input) {
+    final s = input.trim();
+    if (s.isEmpty) return s;
+    DateTime? dt;
+
+    // ลอง parse จากรูปแบบที่แสดง
+    try { dt = _fmtDisplay.parseStrict(s); } catch (_) {}
+
+    // เผื่อพิมพ์มาเป็น yyyy-MM-dd อยู่แล้ว
+    if (dt == null) {
+      try { dt = _fmtApi.parseStrict(s); } catch (_) {}
+    }
+
+    return dt != null ? _fmtApi.format(dt) : s;
+  }
+
+  // ===== Date picker (with theme) =====
   Future<void> _selectDate(BuildContext context, TextEditingController controller) async {
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: DateTime.now(),
       firstDate: DateTime(2000),
       lastDate: DateTime(2101),
+      builder: (ctx, child) => _popupTheme(ctx, child!),
     );
     if (picked != null) {
-      controller.text = DateFormat('yyyy-MM-dd').format(picked);
+      controller.text = _fmtDisplay.format(picked); // แสดงแบบ dd/MM/yyyy
       if (_submitted) _formKey.currentState?.validate();
     }
   }
@@ -306,9 +361,9 @@ class _AddDataScreenState extends State<AddDataScreen> {
   }
 
   String? _phoneValidator(String? v) {
-    if (v == null || v.trim().isEmpty) return 'กรุณากรอกเบอร์';
+    if (v == null || v.trim().isEmpty) return 'กรุณากรอกเบอร์โทรศัพท์';
     final digits = v.replaceAll(RegExp(r'\D'), '');
-    if (digits.length < 9 || digits.length > 11) return 'กรุณากรอกเบอร์ให้ถูกต้อง';
+    if (digits.length < 9 || digits.length > 11) return 'กรุณากรอกเบอร์โทรศัพท์ให้ถูกต้อง';
     return null;
   }
 
@@ -346,8 +401,8 @@ class _AddDataScreenState extends State<AddDataScreen> {
       // ผู้ป่วย
       'pat_name': _nameController.text,
       'pat_epidemic': _diseaseController.text.trim(),
-      'pat_infection_date': _startDateController.text,
-      'pat_recovery_date': _healingDateController.text,
+      'pat_infection_date': _toApiDate(_startDateController.text),  // แปลงเป็น yyyy-MM-dd
+      'pat_recovery_date': _toApiDate(_healingDateController.text), // แปลงเป็น yyyy-MM-dd
       'pat_phone': _phoneNumberController.text,
       'pat_danger_level': _selectedDangerLevel ?? 'ไม่ได้เลือก',
       'pat_latitude': double.tryParse(_latitudeController.text) ?? 0.0,
@@ -501,7 +556,7 @@ class _AddDataScreenState extends State<AddDataScreen> {
         autovalidateMode: _submitted ? AutovalidateMode.always : AutovalidateMode.disabled,
         readOnly: false,
         decoration: InputDecoration(
-          label: _buildLabel('โรคที่ติด', required: true),
+          label: _buildLabel('ชื่อโรค', required: true),
           errorStyle: TextStyle(color: Colors.red.shade700, fontWeight: FontWeight.w600, height: 1.1),
           suffixIcon: _loadingDiseases
               ? const Padding(
@@ -581,7 +636,7 @@ class _AddDataScreenState extends State<AddDataScreen> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          _buildInputField(labelText: 'ชื่อ', controller: _nameController, validator: (v) => _requiredText(v, 'ชื่อ'), required: true),
+                          _buildInputField(labelText: 'ชื่อผู้ป่วย', controller: _nameController, validator: (v) => _requiredText(v, 'ชื่อผู้ป่วย'), required: true),
                           _buildDiseaseFieldHybrid(),
                           _buildInputField(
                             labelText: 'วันที่ติด',
@@ -602,7 +657,7 @@ class _AddDataScreenState extends State<AddDataScreen> {
                             required: true,
                           ),
                           _buildInputField(
-                            labelText: 'เบอร์',
+                            labelText: 'เบอร์โทรศัพท์',
                             controller: _phoneNumberController,
                             keyboardType: TextInputType.phone,
                             validator: _phoneValidator,
@@ -617,14 +672,17 @@ class _AddDataScreenState extends State<AddDataScreen> {
                               final selected = await showDialog<String>(
                                 context: context,
                                 builder: (BuildContext dialogContext) {
-                                  return SimpleDialog(
-                                    title: const Text('เลือกระดับความอันตราย'),
-                                    children: _dangerLevelOptions
-                                        .map((e) => SimpleDialogOption(
-                                              onPressed: () => Navigator.pop(dialogContext, e),
-                                              child: Text(e),
-                                            ))
-                                        .toList(),
+                                  return _popupTheme(
+                                    dialogContext,
+                                    SimpleDialog(
+                                      title: const Text('เลือกระดับความอันตราย'),
+                                      children: _dangerLevelOptions
+                                          .map((e) => SimpleDialogOption(
+                                                onPressed: () => Navigator.pop(dialogContext, e),
+                                                child: Text(e),
+                                              ))
+                                          .toList(),
+                                    ),
                                   );
                                 },
                               );
@@ -637,7 +695,7 @@ class _AddDataScreenState extends State<AddDataScreen> {
                             },
                           ),
 
-                          // พิกัด (ไม่กรอกที่อยู่อัตโนมัติอีกต่อไป)
+                          // พิกัด
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
@@ -676,7 +734,7 @@ class _AddDataScreenState extends State<AddDataScreen> {
                                       if (picked != null) {
                                         setState(() {
                                           _latitudeController.text = picked.latitude.toStringAsFixed(6);
-                                        _longitudeController.text = picked.longitude.toStringAsFixed(6);
+                                          _longitudeController.text = picked.longitude.toStringAsFixed(6);
                                         });
                                         if (_submitted) _formKey.currentState?.validate();
                                         _showFancySnack('เพิ่มพิกัดจากแผนที่แล้ว', success: true);
@@ -772,7 +830,7 @@ class _AddDataScreenState extends State<AddDataScreen> {
 
                           // อื่น ๆ
                           _buildInputField(
-                            labelText: 'ระยะอันตราย',
+                            labelText: 'ขอบเขตแพร่เชื้อของโรค',
                             controller: _dangerRangeController,
                             suffixText: 'เมตร',
                             keyboardType: const TextInputType.numberWithOptions(decimal: true),

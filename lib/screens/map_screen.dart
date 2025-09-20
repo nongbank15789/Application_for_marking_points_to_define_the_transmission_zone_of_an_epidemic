@@ -40,7 +40,8 @@ class _MapScreenState extends State<MapScreen> {
   int? userId;
   LatLng? _center;
   bool _isLoading = true;
-
+  bool get _confirmBarVisible =>
+      widget.markMode && _lastMarkerLat != null && _lastMarkerLng != null;
   final _secure = const FlutterSecureStorage();
 
   List<dynamic> _allPatients = [];
@@ -54,6 +55,9 @@ class _MapScreenState extends State<MapScreen> {
     'disease': 'ทั้งหมด',
     'danger': 'ทั้งหมด',
   };
+
+  // ซ่อน InfoWindow ของ "มาร์กผู้ป่วย" ขณะมีปุ่มยืนยันด้านล่าง
+  bool _suppressInfoWindows = false;
 
   CameraPosition? _currentCameraPosition;
   double? _lastMarkerLat;
@@ -344,10 +348,14 @@ class _MapScreenState extends State<MapScreen> {
         final Marker newMarker = Marker(
           markerId: MarkerId('patient_$patId'),
           position: LatLng(lat, lng),
-          infoWindow: InfoWindow(
-            title: 'ผู้ป่วย: $name',
-            snippet: 'ระดับความอันตราย: $danger\nโรค: $infectedDisease',
-          ),
+          // แสดง/ซ่อน InfoWindow ของ "ผู้ป่วย" ตามสถานะ
+          infoWindow:
+              _suppressInfoWindows
+                  ? const InfoWindow() // ไม่มี title/snippet = ไม่แสดง InfoWindow
+                  : InfoWindow(
+                    title: 'ผู้ป่วย: $name',
+                    snippet: 'ระดับความอันตราย: $danger\nโรค: $infectedDisease',
+                  ),
           icon: BitmapDescriptor.defaultMarkerWithHue(hueColor),
           onTap: () {
             _updateBottomSheet(
@@ -388,6 +396,9 @@ class _MapScreenState extends State<MapScreen> {
     String disease,
     String recoveryDate,
   ) {
+    // ถ้ามีปุ่มยืนยันตำแหน่งอยู่ ไม่ให้แผงข้อมูลขึ้นมา
+    if (_confirmBarVisible) return;
+
     _timer?.cancel();
     setState(() {
       _selectedPatientId = patId;
@@ -401,9 +412,7 @@ class _MapScreenState extends State<MapScreen> {
     if (recoveryDate.isNotEmpty) {
       _startCountdown(recoveryDate);
     } else {
-      setState(() {
-        _countdownString = 'ไม่ระบุวันที่หาย';
-      });
+      setState(() => _countdownString = 'ไม่ระบุวันที่หาย');
     }
   }
 
@@ -624,6 +633,7 @@ class _MapScreenState extends State<MapScreen> {
       _userMarkers.clear();
       _isBottomSheetVisible = false;
       _timer?.cancel();
+      _suppressInfoWindows = true; // ซ่อน info ผู้ป่วยตอนมีปุ่มยืนยัน
     });
     final String markerIdVal = 'user_marker_${_userMarkers.length}';
     final MarkerId markerId = MarkerId(markerIdVal);
@@ -634,7 +644,6 @@ class _MapScreenState extends State<MapScreen> {
         title: 'ลบเครื่องหมาย',
         snippet: 'Lat: ${latLng.latitude}, Lng: ${latLng.longitude}',
         onTap: () {
-          // เมื่อกด InfoWindow → ขึ้น popup ถามยืนยัน
           showDialog(
             context: context,
             builder: (ctx) {
@@ -649,7 +658,7 @@ class _MapScreenState extends State<MapScreen> {
                   TextButton(
                     onPressed: () {
                       Navigator.of(ctx).pop();
-                      _removeMarker(markerId); // ลบมาร์ก
+                      _removeMarker(markerId);
                     },
                     child: const Text(
                       'ลบ',
@@ -670,15 +679,30 @@ class _MapScreenState extends State<MapScreen> {
       _lastMarkerLat = latLng.latitude;
       _lastMarkerLng = latLng.longitude;
 
-      // ซ่อนทิปเมื่อผู้ใช้วางมาร์กแล้ว
       if (_showMarkTip) _tipOpacity = 0.0;
     });
+    if (_confirmBarVisible && _isBottomSheetVisible) {
+      _hideBottomSheet();
+    }
+  }
+
+  void _clearUserMarker() {
+    setState(() {
+      _userMarkers.clear();
+      _lastMarkerLat = null;
+      _lastMarkerLng = null;
+      _suppressInfoWindows = false; // กลับมาแสดง InfoWindow ผู้ป่วยตามปกติ
+    });
+    _applyFilters(); // รีเฟรชมาร์กผู้ป่วย (สำหรับ InfoWindow)
   }
 
   void _removeMarker(MarkerId markerId) {
     setState(() {
       _userMarkers.removeWhere((marker) => marker.markerId == markerId);
     });
+    if (_userMarkers.isEmpty) {
+      _clearUserMarker();
+    }
   }
 
   void _showSnackBar(String message) {
@@ -690,94 +714,127 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   // ===== Tip แบนเนอร์ด้านล่าง (แสดงเมื่อ markMode = true) =====
-  Widget _buildBottomTipBanner() {
-    if (!_showMarkTip) return const SizedBox.shrink();
-    final bottomInset = MediaQuery.of(context).padding.bottom;
-    return Positioned(
-      left: 12,
-      right: 12,
-      bottom: 76 + bottomInset, // ยกทิปให้อยู่เหนือปุ่มยืนยัน
-      child: AnimatedSlide(
-        duration: const Duration(milliseconds: 250),
-        offset: _tipOpacity > 0 ? Offset.zero : const Offset(0, 0.2),
+Widget _buildBottomTipBanner() {
+  if (!_showMarkTip) return const SizedBox.shrink();
+  final bottomInset = MediaQuery.of(context).padding.bottom;
+
+  return Positioned(
+    left: 12,
+    right: 12,
+    bottom: 76 + bottomInset,
+    child: AnimatedSlide(
+      duration: const Duration(milliseconds: 250),
+      offset: _tipOpacity > 0 ? Offset.zero : const Offset(0, 0.2),
+
+      // <- สำคัญ: เมื่อ opacity = 0 ให้เลิก intercept การกด
+      child: IgnorePointer(
+        ignoring: _tipOpacity == 0,
+
         child: AnimatedOpacity(
           duration: const Duration(milliseconds: 250),
           opacity: _tipOpacity,
+          // ถ้าอยากให้หายไปจาก tree เลยหลังจาง ให้ย้าย _showMarkTip=false ที่ onEnd
+          onEnd: () {
+            if (_tipOpacity == 0 && mounted) {
+              setState(() => _showMarkTip = false); // (ทางเลือก)
+            }
+          },
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.95),
               borderRadius: BorderRadius.circular(16),
-              boxShadow: const [
-                BoxShadow(
-                  color: Colors.black26,
-                  blurRadius: 16,
-                  offset: Offset(0, 4),
-                ),
-              ],
-              border: Border.all(
-                color: const Color(0xFF0E47A1).withOpacity(0.2),
-              ),
+              boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 16, offset: Offset(0, 4))],
+              border: Border.all(color: const Color(0xFF0E47A1).withOpacity(0.2)),
             ),
             child: Row(
               children: [
                 const CircleAvatar(
-                  backgroundColor: Color(0xFF0E47A1),
-                  radius: 18,
+                  backgroundColor: Color(0xFF0E47A1), radius: 18,
                   child: Icon(Icons.add_location_alt, color: Colors.white),
                 ),
                 const SizedBox(width: 12),
                 const Expanded(
-                  child: Text(
-                    'โหมดปักหมุด: แตะค้างบนแผนที่เพื่อวางมาร์ก\nจากนั้นกด “ยืนยันตำแหน่ง” ด้านล่าง',
-                    style: TextStyle(fontSize: 14, height: 1.3),
-                  ),
+                  child: Text('โหมดปักหมุด: แตะค้างบนแผนที่เพื่อวางมาร์ก\nจากนั้นกด “ยืนยันตำแหน่ง” ด้านล่าง', style: TextStyle(fontSize: 14, height: 1.3)),
                 ),
-                TextButton(
-                  onPressed: () => setState(() => _tipOpacity = 0.0),
-                  child: const Text('เข้าใจแล้ว'),
-                ),
+                TextButton(onPressed: () => setState(() => _tipOpacity = 0.0), child: const Text('เข้าใจแล้ว')),
               ],
             ),
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
-  // ===== แถบปุ่มยืนยันด้านล่าง =====
-  Widget _buildBottomConfirmBar() {
-    if (!(widget.markMode &&
-        _lastMarkerLat != null &&
-        _lastMarkerLng != null)) {
-      return const SizedBox.shrink();
-    }
-    final bottomInset = MediaQuery.of(context).padding.bottom;
-    return Positioned(
-      left: 12,
-      right: 12,
-      bottom: 12 + bottomInset,
-      child: SafeArea(
-        top: false,
-        child: ElevatedButton.icon(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF0E47A1),
-            foregroundColor: Colors.white,
-            minimumSize: const Size.fromHeight(52),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
-            elevation: 6,
-          ),
-          icon: const Icon(Icons.check),
-          label: const Text('ยืนยันตำแหน่ง'),
-          onPressed: () {
-            Navigator.pop(context, LatLng(_lastMarkerLat!, _lastMarkerLng!));
-          },
-        ),
-      ),
-    );
+  // ===== แถบปุ่มยืนยันด้านล่าง (มี "ลบมาร์ก" + "ยืนยันตำแหน่ง") =====
+Widget _buildBottomConfirmBar() {
+  if (!(widget.markMode && _lastMarkerLat != null && _lastMarkerLng != null)) {
+    return const SizedBox.shrink();
   }
+  final bottomInset = MediaQuery.of(context).padding.bottom;
+  return Positioned(
+    left: 12,
+    right: 12,
+    bottom: 12 + bottomInset,
+    child: SafeArea(
+      top: false,
+      child: Row(
+        children: [
+          // ---- ลบมาร์ก ----
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              clipBehavior: Clip.hardEdge, // สำคัญ: ให้ hit test ถูกตัดตามโค้ง
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.delete_outline),
+                label: const Text('ลบมาร์ก'),
+                style: OutlinedButton.styleFrom(
+                  // ให้ขนาดกดเท่าปุ่มจริง
+                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  minimumSize: const Size.fromHeight(0), // ไม่บังคับขนาดเกินจำเป็น
+                  foregroundColor: Colors.red,
+                  side: const BorderSide(color: Colors.red),
+                  backgroundColor: Colors.white,
+                ),
+                onPressed: _clearUserMarker,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+
+          // ---- ยืนยันตำแหน่ง ----
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              clipBehavior: Clip.hardEdge,
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.check),
+                label: const Text('ยืนยันตำแหน่ง'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  minimumSize: const Size.fromHeight(0),
+                  backgroundColor: const Color(0xFF0E47A1),
+                  foregroundColor: Colors.white,
+                  elevation: 6,
+                ),
+                onPressed: () {
+                  Navigator.pop(
+                    context,
+                    LatLng(_lastMarkerLat!, _lastMarkerLng!),
+                  );
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -813,9 +870,9 @@ class _MapScreenState extends State<MapScreen> {
           ),
           _buildTopBar(),
           _buildFloatingButtons(),
-          if (_isBottomSheetVisible) _buildBottomSheet(),
+          if (_isBottomSheetVisible && !_confirmBarVisible) _buildBottomSheet(),
 
-          // ด้านล่าง: ปุ่มยืนยัน (ก่อน) แล้วตามด้วยทิป (จะลอยเหนือปุ่ม)
+          // ลำดับ: ปุ่มยืนยัน/ลบ (ล่างสุด) แล้วค่อยทิป
           _buildBottomConfirmBar(),
           if (widget.markMode) _buildBottomTipBanner(),
         ],
@@ -891,7 +948,7 @@ class _MapScreenState extends State<MapScreen> {
                             ),
                             Text(
                               userData != null
-                                  ? userData!['stf_email'] ?? ""
+                                  ? (userData!['stf_email'] ?? "")
                                   : "example@email.com",
                               style: const TextStyle(
                                 fontSize: 14,
@@ -989,7 +1046,6 @@ class _MapScreenState extends State<MapScreen> {
                     ),
                   );
                 } else {
-                  // ไม่มีมาร์ก -> เปิดหน้าว่าง ๆ
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -1080,7 +1136,6 @@ class _MapScreenState extends State<MapScreen> {
                       ),
                     ),
                     const Spacer(),
-
                     IconButton(
                       icon: const Icon(
                         Icons.search,
