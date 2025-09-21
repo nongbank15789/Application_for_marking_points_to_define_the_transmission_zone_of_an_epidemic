@@ -8,9 +8,8 @@ import 'package:project/screens/auth_screen.dart';
 import 'drawer_list_item.dart';
 import 'profile_screen.dart';
 import 'filter_screen.dart';
-// REMOVED: import 'history_screen.dart';
-import 'infected_history_screen.dart';     // <-- เพิ่ม
-import 'recovered_history_screen.dart';    // <-- เพิ่ม
+import 'infected_history_screen.dart';
+import 'recovered_history_screen.dart';
 import 'add_data_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geocoding/geocoding.dart';
@@ -42,8 +41,10 @@ class _MapScreenState extends State<MapScreen> {
   int? userId;
   LatLng? _center;
   bool _isLoading = true;
+
   bool get _confirmBarVisible =>
       widget.markMode && _lastMarkerLat != null && _lastMarkerLng != null;
+
   final _secure = const FlutterSecureStorage();
 
   List<dynamic> _allPatients = [];
@@ -51,9 +52,19 @@ class _MapScreenState extends State<MapScreen> {
   final Set<Marker> _userMarkers = {};
   final Set<Circle> _dangerCircles = {};
 
+  /// ====== ฟิลเตอร์แบบใหม่: รองรับช่วงวันที่จาก FilterScreen ======
   Map<String, dynamic> _activeFilters = {
+    // แสดงผลเฉย ๆ (อาจมีข้อความ “เลือกช่วงวันที่” หรือ “ทั้งหมด”)
     'infectedDate': 'ทั้งหมด',
     'recoveryDate': 'ทั้งหมด',
+
+    // ใช้งานจริงในการกรอง (yyyy-MM-dd หรือ null)
+    'infectedStart': null,
+    'infectedEnd': null,
+    'recoveryStart': null,
+    'recoveryEnd': null,
+
+    // ฟิลเตอร์อื่น ๆ
     'disease': 'ทั้งหมด',
     'danger': 'ทั้งหมด',
   };
@@ -63,6 +74,7 @@ class _MapScreenState extends State<MapScreen> {
   CameraPosition? _currentCameraPosition;
   double? _lastMarkerLat;
   double? _lastMarkerLng;
+
   String _bottomSheetTitle = 'ไม่พบข้อมูล';
   String _bottomSheetDanger = 'ไม่พบข้อมูล';
   String _bottomSheetDescription = 'ไม่พบข้อมูล';
@@ -187,92 +199,66 @@ class _MapScreenState extends State<MapScreen> {
     return now.isAfter(dt) || now.isAtSameMomentAs(dt);
   }
 
+  /// ---------- Helper: parse yyyy-MM-dd (หรือแบบเต็ม) เป็น DateTime (ตัดเวลา) ----------
+  DateTime? _parseYmdToDate(String? s) {
+    if (s == null) return null;
+    final t = s.trim();
+    if (t.isEmpty) return null;
+    final dt = DateTime.tryParse(t);
+    if (dt == null) return null;
+    return DateTime(dt.year, dt.month, dt.day);
+  }
+
+  /// ---------- กรองข้อมูลด้วยฟิลเตอร์ใหม่ ----------
   void _applyFilters() {
+    final String diseaseFilter = (_activeFilters['disease'] ?? 'ทั้งหมด').toString();
+    final String dangerFilter = (_activeFilters['danger'] ?? 'ทั้งหมด').toString();
+
+    // วันที่จากฟิลเตอร์ (อาจเป็น null)
+    final DateTime? infectedStart = _parseYmdToDate(_activeFilters['infectedStart']?.toString());
+    final DateTime? infectedEnd   = _parseYmdToDate(_activeFilters['infectedEnd']?.toString());
+    final DateTime? recoveryStart = _parseYmdToDate(_activeFilters['recoveryStart']?.toString());
+    final DateTime? recoveryEnd   = _parseYmdToDate(_activeFilters['recoveryEnd']?.toString());
+
     final filteredPatients = _allPatients.where((patient) {
+      // โรค
       final isDiseaseMatch =
-          _activeFilters['disease'] == 'ทั้งหมด' ||
-          (patient['pat_epidemic']?.toString() ?? '') == _activeFilters['disease'];
+          diseaseFilter == 'ทั้งหมด' ||
+          (patient['pat_epidemic']?.toString() ?? '') == diseaseFilter;
 
+      // อันตราย
       final isDangerMatch =
-          _activeFilters['danger'] == 'ทั้งหมด' ||
-          (patient['pat_danger_level']?.toString() ?? '') == _activeFilters['danger'];
+          dangerFilter == 'ทั้งหมด' ||
+          (patient['pat_danger_level']?.toString() ?? '') == dangerFilter;
 
+      // ติดเชื้อภายในช่วง
       bool isInfectionDateMatch = true;
-      if (_activeFilters['infectedDate'] != 'ทั้งหมด') {
-        final infectedDateString = patient['pat_infection_date']?.toString();
-        if (infectedDateString != null && infectedDateString.isNotEmpty) {
-          final infectedDate = DateTime.tryParse(infectedDateString);
-          if (infectedDate != null) {
-            final now = DateTime.now();
-            final today = DateTime(now.year, now.month, now.day);
-            final patientDate = DateTime(infectedDate.year, infectedDate.month, infectedDate.day);
-
-            switch (_activeFilters['infectedDate']) {
-              case 'วันนี้':
-                isInfectionDateMatch = patientDate.isAtSameMomentAs(today);
-                break;
-              case 'สัปดาห์นี้':
-                final startOfWeek = today.subtract(Duration(days: today.weekday - 1));
-                final endOfWeek = startOfWeek.add(const Duration(days: 7));
-                isInfectionDateMatch =
-                    (patientDate.isAfter(startOfWeek) && patientDate.isBefore(endOfWeek)) ||
-                    patientDate.isAtSameMomentAs(startOfWeek);
-                break;
-              case 'เดือนนี้':
-                final startOfMonth = DateTime(now.year, now.month, 1);
-                final endOfMonth = DateTime(now.year, now.month + 1, 1);
-                isInfectionDateMatch =
-                    (patientDate.isAfter(startOfMonth) && patientDate.isBefore(endOfMonth)) ||
-                    patientDate.isAtSameMomentAs(startOfMonth);
-                break;
-              case 'ปีนี้':
-                final startOfYear = DateTime(now.year, 1, 1);
-                final endOfYear = DateTime(now.year + 1, 1, 1);
-                isInfectionDateMatch =
-                    (patientDate.isAfter(startOfYear) && patientDate.isBefore(endOfYear)) ||
-                    patientDate.isAtSameMomentAs(startOfYear);
-                break;
-            }
+      final DateTime? infectedDate = _parseYmdToDate(patient['pat_infection_date']?.toString());
+      if (infectedStart != null || infectedEnd != null) {
+        if (infectedDate == null) {
+          isInfectionDateMatch = false;
+        } else {
+          if (infectedStart != null && infectedDate.isBefore(infectedStart)) {
+            isInfectionDateMatch = false;
+          }
+          if (infectedEnd != null && infectedDate.isAfter(infectedEnd)) {
+            isInfectionDateMatch = false;
           }
         }
       }
 
+      // หายจากโรคภายในช่วง
       bool isRecoveryDateMatch = true;
-      if (_activeFilters['recoveryDate'] != 'ทั้งหมด') {
-        final recoveryDateString = patient['pat_recovery_date']?.toString();
-        if (recoveryDateString != null && recoveryDateString.isNotEmpty) {
-          final recoveryDate = DateTime.tryParse(recoveryDateString);
-          if (recoveryDate != null) {
-            final now = DateTime.now();
-            final today = DateTime(now.year, now.month, now.day);
-            final patientDate = DateTime(recoveryDate.year, recoveryDate.month, recoveryDate.day);
-
-            switch (_activeFilters['recoveryDate']) {
-              case 'วันนี้':
-                isRecoveryDateMatch = patientDate.isAtSameMomentAs(today);
-                break;
-              case 'สัปดาห์นี้':
-                final startOfWeek = today.subtract(Duration(days: today.weekday - 1));
-                final endOfWeek = startOfWeek.add(const Duration(days: 7));
-                isRecoveryDateMatch =
-                    (patientDate.isAfter(startOfWeek) && patientDate.isBefore(endOfWeek)) ||
-                    patientDate.isAtSameMomentAs(startOfWeek);
-                break;
-              case 'เดือนนี้':
-                final startOfMonth = DateTime(now.year, now.month, 1);
-                final endOfMonth = DateTime(now.year, now.month + 1, 1);
-                isRecoveryDateMatch =
-                    (patientDate.isAfter(startOfMonth) && patientDate.isBefore(endOfMonth)) ||
-                    patientDate.isAtSameMomentAs(startOfMonth);
-                break;
-              case 'ปีนี้':
-                final startOfYear = DateTime(now.year, 1, 1);
-                final endOfYear = DateTime(now.year + 1, 1, 1);
-                isRecoveryDateMatch =
-                    (patientDate.isAfter(startOfYear) && patientDate.isBefore(endOfYear)) ||
-                    patientDate.isAtSameMomentAs(startOfYear);
-                break;
-            }
+      final DateTime? recDate = _parseYmdToDate(patient['pat_recovery_date']?.toString());
+      if (recoveryStart != null || recoveryEnd != null) {
+        if (recDate == null) {
+          isRecoveryDateMatch = false;
+        } else {
+          if (recoveryStart != null && recDate.isBefore(recoveryStart)) {
+            isRecoveryDateMatch = false;
+          }
+          if (recoveryEnd != null && recDate.isAfter(recoveryEnd)) {
+            isRecoveryDateMatch = false;
           }
         }
       }
@@ -312,8 +298,8 @@ class _MapScreenState extends State<MapScreen> {
         final double hueColor;
         Color circleColor;
         if (recovered) {
-          hueColor = BitmapDescriptor.hueGreen;
-          circleColor = Colors.transparent;
+          hueColor = BitmapDescriptor.hueGreen; // ผู้ที่หายแล้ว = เขียว
+          circleColor = Colors.transparent;     // ไม่แสดงวงกลมอันตราย
         } else {
           switch (danger) {
             case 'มาก':
@@ -892,7 +878,8 @@ class _MapScreenState extends State<MapScreen> {
   Widget _buildDrawer(BuildContext context) {
     return Drawer(
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.only(topRight: Radius.circular(25), bottomRight: Radius.circular(25)),
+        borderRadius:
+            BorderRadius.only(topRight: Radius.circular(25), bottomRight: Radius.circular(25)),
       ),
       width: MediaQuery.of(context).size.width * 0.75,
       child: Container(
@@ -920,7 +907,8 @@ class _MapScreenState extends State<MapScreen> {
                         child: (userData == null ||
                                 userData!['stf_avatar'] == null ||
                                 userData!['stf_avatar'].toString().isEmpty)
-                            ? const Icon(Icons.person, size: 32, color: Color.fromARGB(200, 14, 70, 161))
+                            ? const Icon(Icons.person,
+                                size: 32, color: Color.fromARGB(200, 14, 70, 161))
                             : null,
                       ),
                       const SizedBox(width: 12),
@@ -931,7 +919,8 @@ class _MapScreenState extends State<MapScreen> {
                           children: [
                             Text(
                               userData != null ? "${userData!['stf_username']}" : "ชื่อผู้ใช้",
-                              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF0E47A1)),
+                              style: const TextStyle(
+                                  fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF0E47A1)),
                             ),
                             Text(
                               userData != null ? (userData!['stf_email'] ?? "") : "example@email.com",
@@ -947,7 +936,12 @@ class _MapScreenState extends State<MapScreen> {
               },
             ),
 
-            const Divider(thickness: 1, height: 1, indent: 16, endIndent: 16, color: Color.fromARGB(31, 0, 0, 0)),
+            const Divider(
+                thickness: 1,
+                height: 1,
+                indent: 16,
+                endIndent: 16,
+                color: Color.fromARGB(31, 0, 0, 0)),
             const SizedBox(height: 16),
 
             DrawerListItem(
@@ -956,11 +950,13 @@ class _MapScreenState extends State<MapScreen> {
               onTap: () {
                 if (userId != null) {
                   Navigator.pop(context);
-                  Navigator.push(context, MaterialPageRoute(
-                    builder: (context) => ProfileScreen(userId: userId!),
-                  ));
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => ProfileScreen(userId: userId!)));
                 } else {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ไม่พบ userId')));
+                  ScaffoldMessenger.of(context)
+                      .showSnackBar(const SnackBar(content: Text('ไม่พบ userId')));
                 }
               },
             ),
@@ -975,7 +971,11 @@ class _MapScreenState extends State<MapScreen> {
                 );
                 if (selectedFilters != null) {
                   setState(() {
-                    _activeFilters = selectedFilters;
+                    _activeFilters = {
+                      // เก็บค่าที่ FilterScreen ส่งมา (รองรับคีย์ใหม่ทั้งหมด)
+                      ..._activeFilters,
+                      ...selectedFilters,
+                    };
                   });
                   _applyFilters();
                 }
@@ -983,7 +983,6 @@ class _MapScreenState extends State<MapScreen> {
             ),
             const SizedBox(height: 6),
 
-            // ✅ ไปหน้า "ผู้ติดเชื้อ (ยังไม่หาย)"
             DrawerListItem(
               icon: Icons.history_outlined,
               title: 'ประวัติผู้ป่วย',
@@ -997,7 +996,6 @@ class _MapScreenState extends State<MapScreen> {
             ),
             const SizedBox(height: 6),
 
-            // ✅ ไปหน้า "ผู้ป่วยที่หายแล้ว"
             DrawerListItem(
               icon: Icons.verified_user_outlined,
               title: 'ผู้ป่วยที่หายแล้ว',
@@ -1247,7 +1245,8 @@ class _MapScreenState extends State<MapScreen> {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  const Text('คำอธิบาย', style: TextStyle(fontSize: 12, color: Colors.black54)),
+                  const Text('คำอธิบาย',
+                      style: TextStyle(fontSize: 12, color: Colors.black54)),
                   const SizedBox(height: 6),
                   Container(
                     width: double.infinity,

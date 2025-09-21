@@ -9,6 +9,13 @@ const _getEndpoint = '/api/get_history.php';
 const _updateEndpoint = '/api/update_history.php';
 const _deleteEndpoint = '/api/delete_history.php';
 
+// ===== Theme helpers for badge & app =====
+const _primary = Color(0xFF0E47A1);
+const _ok     = Color(0xFF2E7D32); // เขียว
+const _warn   = Color(0xFFF57C00); // ส้ม
+const _danger = Color(0xFFD32F2F); // แดง
+const _chipBg = Color(0xFFF3F6FF); // พื้นจาง ๆ
+
 class InfectedRecord {
   final int? id;
   final String? name,
@@ -82,7 +89,6 @@ class InfectedRecord {
         landmark: j['pat_address_landmark'],
       );
 
-  // ที่อยู่แบบอ่านอย่างเดียว (ประกอบจากส่วนย่อย)
   String fullAddress() {
     final p = <String>[
       if ((houseNo ?? '').trim().isNotEmpty) 'บ้านเลขที่ $houseNo',
@@ -139,7 +145,6 @@ class _InfectedHistoryScreenState extends State<InfectedHistoryScreen> {
       throw Exception('Failed: ${res.statusCode} ${res.body}');
     }
     final List data = jsonDecode(res.body);
-    // เฉพาะ “ยังไม่หาย”
     return data
         .cast<Map<String, dynamic>>()
         .map((e) => InfectedRecord.fromJson(e))
@@ -174,14 +179,14 @@ class _InfectedHistoryScreenState extends State<InfectedHistoryScreen> {
               surfaceTintColor: Colors.transparent,
               shadowColor: Colors.transparent,
               leading: IconButton(
-                icon: const Icon(Icons.arrow_back_ios, color: Color(0xFF0E47A1)),
+                icon: const Icon(Icons.arrow_back_ios, color: _primary),
                 onPressed: () => Navigator.pop(context),
               ),
               centerTitle: true,
               title: const Text(
                 'ประวัติผู้ป่วย (ติดเชื้ออยู่)',
                 style: TextStyle(
-                    color: Color(0xFF0E47A1),
+                    color: _primary,
                     fontSize: 26,
                     fontWeight: FontWeight.bold),
               ),
@@ -214,7 +219,7 @@ class _InfectedHistoryScreenState extends State<InfectedHistoryScreen> {
                                 title: r.name ?? '-',
                                 disease: r.disease ?? '-',
                                 startDate: r.startDate ?? '-',
-                                endDate: r.endDate ?? '-',
+                                endDate: r.endDate ?? '-', // ให้ badge คำนวณ
                                 phone: r.phoneNumber ?? '-',
                                 dangerLevel: r.dangerLevel,
                                 address: r.fullAddress(),
@@ -288,6 +293,25 @@ class _SearchBar extends StatelessWidget {
   }
 }
 
+// ===== Helpers for "อีกกี่วันหาย"
+int _daysUntil(String? endDate) {
+  if (endDate == null || endDate.trim().isEmpty) return 0;
+  final s = endDate.trim();
+  final dt = DateTime.tryParse(s.length == 10 ? '$s 00:00:00' : s);
+  if (dt == null) return 0;
+  final now = DateTime.now();
+  return dt.difference(DateTime(now.year, now.month, now.day)).inDays;
+}
+
+({String text, Color color}) recoveryNoteAndColor(String? endDate) {
+  final d = _daysUntil(endDate);
+  if (d < 0) return (text: 'เลยกำหนด ${-d} วัน', color: _ok);
+  if (d == 0) return (text: 'หายวันนี้', color: _ok);
+  if (d <= 3) return (text: 'หายอีก $d วัน', color: _ok);
+  if (d <= 7) return (text: 'หายอีก $d วัน', color: _warn);
+  return (text: 'หายอีก $d วัน', color: _danger);
+}
+
 class _HistoryCard extends StatelessWidget {
   final Size size;
   final String title, disease, startDate, endDate, phone;
@@ -301,7 +325,7 @@ class _HistoryCard extends StatelessWidget {
     required this.title,
     required this.disease,
     required this.startDate,
-    required this.endDate,
+    required this.endDate, // NEW: ใช้คำนวณ badge
     required this.phone,
     required this.dangerLevel,
     required this.address,
@@ -310,15 +334,51 @@ class _HistoryCard extends StatelessWidget {
     required this.onEdit,
   });
 
+  Widget _badge(String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: _chipBg,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withOpacity(.25), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.schedule_rounded, size: 16, color: color),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w700,
+              fontSize: 13.5,
+              letterSpacing: .2,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final info = recoveryNoteAndColor(endDate);
+
     return Container(
       width: size.width * 0.9,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: const Color(0xFFEAF7FB),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFF0E47A1), width: 1.5),
+        border: Border.all(color: _primary, width: 1.5),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.12),
@@ -339,7 +399,7 @@ class _HistoryCard extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF0D47A1),
+                  color: _primary,
                 ),
               ),
               Row(
@@ -347,7 +407,7 @@ class _HistoryCard extends StatelessWidget {
                   IconButton(
                     icon: const Icon(
                       Icons.location_on_outlined,
-                      color: Color(0xFF0D47A1),
+                      color: _primary,
                     ),
                     onPressed: () {
                       final la = double.tryParse(lat ?? '');
@@ -370,7 +430,7 @@ class _HistoryCard extends StatelessWidget {
                   IconButton(
                     icon: const Icon(
                       Icons.fullscreen_outlined,
-                      color: Color(0xFF0D47A1),
+                      color: _primary,
                     ),
                     onPressed: onEdit,
                   ),
@@ -378,9 +438,19 @@ class _HistoryCard extends StatelessWidget {
               ),
             ],
           ),
-          const Divider(color: Color(0xFF0D47A1), thickness: 1, height: 10),
+          const Divider(color: _primary, thickness: 1, height: 10),
           const SizedBox(height: 8),
-          _row('โรคที่ติด', disease),
+
+          // โรคที่ติด + badge "อีกกี่วันหาย"
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: _row('โรคที่ติด', disease)),
+              const SizedBox(width: 8),
+              _badge(info.text, info.color),
+            ],
+          ),
+
           const SizedBox(height: 8),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -432,24 +502,19 @@ class _EditDialogInfected extends StatefulWidget {
 class _EditDialogInfectedState extends State<_EditDialogInfected> {
   static const _primary = Color(0xFF0E47A1);
 
-  // Form
   final _formKey = GlobalKey<FormState>();
   bool _submitted = false;
 
-  // Date formats
   final DateFormat _fmtDisplay = DateFormat('dd/MM/yyyy');
   final DateFormat _fmtApi = DateFormat('yyyy-MM-dd');
 
-  // Danger levels
   final List<String> _dangerLevelOptions = ['น้อย', 'ปานกลาง', 'มาก'];
   late final TextEditingController _dangerLevelController;
   String? _selectedDangerLevel;
 
-  // Disease list
   List<String> _diseaseOptions = [];
   bool _loadingDiseases = true;
 
-  // Controllers
   late final TextEditingController _name,
       _disease,
       _start,
@@ -523,7 +588,6 @@ class _EditDialogInfectedState extends State<_EditDialogInfected> {
     super.dispose();
   }
 
-  // ===== Dates helpers =====
   String _fromApiToDisplay(String? s) {
     final v = (s ?? '').trim();
     if (v.isEmpty || v == '0000-00-00') return '';
@@ -576,7 +640,6 @@ class _EditDialogInfectedState extends State<_EditDialogInfected> {
     }
   }
 
-  // ===== Fetch disease list =====
   Future<void> _fetchDiseases() async {
     setState(() => _loadingDiseases = true);
     try {
@@ -606,7 +669,6 @@ class _EditDialogInfectedState extends State<_EditDialogInfected> {
     }
   }
 
-  // ===== Validators =====
   String? _required(String? v, String label) {
     if (v == null || v.trim().isEmpty) return 'กรุณากรอก$label';
     return null;
@@ -633,7 +695,6 @@ class _EditDialogInfectedState extends State<_EditDialogInfected> {
     return null;
   }
 
-  // ===== Error collector for popup =====
   List<String> _collectErrors() {
     final errs = <String>[];
     if (_name.text.trim().isEmpty) errs.add('ชื่อผู้ป่วย');
@@ -660,7 +721,6 @@ class _EditDialogInfectedState extends State<_EditDialogInfected> {
     return errs;
   }
 
-  // ===== Dialog helpers =====
   Future<bool?> _confirm(String msg) async {
     return showDialog<bool>(
       context: context,
@@ -797,7 +857,6 @@ class _EditDialogInfectedState extends State<_EditDialogInfected> {
     );
   }
 
-  // ===== Inputs =====
   Widget _label(String text, {bool required = false}) => RichText(
         text: TextSpan(
           text: text,
@@ -1013,7 +1072,6 @@ class _EditDialogInfectedState extends State<_EditDialogInfected> {
     );
   }
 
-  // ===== Save / Delete =====
   Future<void> _save() async {
     setState(() => _submitted = true);
 
@@ -1116,7 +1174,6 @@ class _EditDialogInfectedState extends State<_EditDialogInfected> {
     }
   }
 
-  // ===== UI =====
   @override
   Widget build(BuildContext context) {
     return FractionallySizedBox(
