@@ -9,7 +9,7 @@ const _apiBase = '10.0.2.2:80';
 
 // endpoint สำหรับ “ผู้ป่วยหายแล้ว”
 const _getEndpoint = '/api/get_recovered.php';
-const _updateEndpoint = '/api/update_recovered.php';
+const _updateEndpoint = '/api/save_patient.php';
 const _deleteEndpoint = '/api/delete_recovered.php';
 
 // ใช้ endpoint รายการโรค (เหมือนหน้า add_data)

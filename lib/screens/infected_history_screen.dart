@@ -6,7 +6,7 @@ import 'map_screen.dart';
 
 const _apiBase = '10.0.2.2:80';
 const _getEndpoint = '/api/get_history.php';
-const _updateEndpoint = '/api/update_history.php';
+const _updateEndpoint = '/api/save_patient.php';
 const _deleteEndpoint = '/api/delete_history.php';
 
 // ===== Theme helpers for badge & app =====
@@ -127,14 +127,21 @@ class _InfectedHistoryScreenState extends State<InfectedHistoryScreen> {
     super.dispose();
   }
 
-  bool _isRecovered(String? recoveryDate) {
-    if (recoveryDate == null || recoveryDate.trim().isEmpty) return false;
-    final s = recoveryDate.trim();
-    final dt = DateTime.tryParse(s.length == 10 ? '$s 00:00:00' : s);
-    if (dt == null) return false;
-    final now = DateTime.now();
-    return now.isAfter(dt) || now.isAtSameMomentAs(dt);
+ bool _isRecovered(String? recoveryDate) {
+  if (recoveryDate == null) return false;
+  final s = recoveryDate.trim();
+  if (s.isEmpty || s == '0000-00-00') return false;
+  try {
+    final dt = s.length == 10
+        ? DateFormat('yyyy-MM-dd').parseStrict(s)
+        : DateTime.parse(s);
+    final endOfDay = DateTime(dt.year, dt.month, dt.day, 23, 59, 59);
+    return DateTime.now().isAfter(endOfDay) || DateTime.now().isAtSameMomentAs(endOfDay);
+  } catch (_) {
+    return false;
   }
+}
+
 
   Future<List<InfectedRecord>> _fetch([String? q]) async {
     final qp = <String, String>{};
