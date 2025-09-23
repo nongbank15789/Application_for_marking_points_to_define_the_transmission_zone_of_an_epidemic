@@ -63,29 +63,28 @@ class RecoveredRecord {
   });
 
   factory RecoveredRecord.fromJson(Map<String, dynamic> j) => RecoveredRecord(
-  id: int.tryParse(j['pat_id'].toString()),
-  name: j['pat_name']?.toString(),
-  disease: j['pat_epidemic']?.toString(),
-  startDate: j['pat_infection_date']?.toString(),
-  endDate: j['pat_recovery_date']?.toString(),
-  phoneNumber: j['pat_phone']?.toString(),
-  dangerLevel: j['pat_danger_level']?.toString(),
-  description: j['pat_description']?.toString(),
-  dangerRange: j['pat_danger_range']?.toString(),
-  latitude: j['pat_latitude']?.toString(),
-  longitude: j['pat_longitude']?.toString(),
-  houseNo: j['pat_address_house_no']?.toString(),
-  soi: j['pat_address_soi']?.toString(),
-  road: j['pat_address_road']?.toString(),
-  village: j['pat_address_village']?.toString(),
-  moo: j['pat_address_moo']?.toString(),
-  subdistrict: j['pat_address_subdistrict']?.toString(),
-  district: j['pat_address_district']?.toString(),
-  province: j['pat_address_province']?.toString(),
-  postcode: j['pat_address_postcode']?.toString(),
-  landmark: j['pat_address_landmark']?.toString(),
-);
-
+    id: int.tryParse(j['pat_id'].toString()),
+    name: j['pat_name']?.toString(),
+    disease: j['pat_epidemic']?.toString(),
+    startDate: j['pat_infection_date']?.toString(),
+    endDate: j['pat_recovery_date']?.toString(),
+    phoneNumber: j['pat_phone']?.toString(),
+    dangerLevel: j['pat_danger_level']?.toString(),
+    description: j['pat_description']?.toString(),
+    dangerRange: j['pat_danger_range']?.toString(),
+    latitude: j['pat_latitude'],
+    longitude: j['pat_longitude'],
+    houseNo: j['pat_address_house_no']?.toString(),
+    soi: j['pat_address_soi']?.toString(),
+    road: j['pat_address_road']?.toString(),
+    village: j['pat_address_village']?.toString(),
+    moo: j['pat_address_moo']?.toString(),
+    subdistrict: j['pat_address_subdistrict']?.toString(),
+    district: j['pat_address_district']?.toString(),
+    province: j['pat_address_province']?.toString(),
+    postcode: j['pat_address_postcode']?.toString(),
+    landmark: j['pat_address_landmark']?.toString(),
+  );
 
   String fullAddress() {
     final p = <String>[
@@ -1185,7 +1184,8 @@ class _EditDialogRecoveredState extends State<_EditDialogRecovered> {
       'pat_danger_level': _selectedDangerLevel ?? '',
       'pat_description': _desc.text.trim(),
       'pat_danger_range': _range.text.trim(),
-      // address (ส่งไปด้วยในกรณีต้องการเก็บ/แก้)
+      'pat_latitude': widget.record.latitude ?? '',
+      'pat_longitude': widget.record.longitude ?? '',
       'pat_address_house_no': _houseNo.text.trim(),
       'pat_address_moo': _moo.text.trim(),
       'pat_address_village': _village.text.trim(),

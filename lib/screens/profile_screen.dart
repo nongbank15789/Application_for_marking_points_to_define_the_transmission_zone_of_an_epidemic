@@ -268,9 +268,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     const SizedBox(height: 12),
                     _styledInfoField(
                       "เบอร์โทรศัพท์",
-                      userData!['stf_phone'] != null
-                          ? "0${userData!['stf_phone']}" // ✅ เติม 0 ข้างหน้า
-                          : "-",
+                      userData!['stf_phone'] ?? "-",
                       icon: Icons.phone_outlined,
                     ),
                     const SizedBox(height: 12),

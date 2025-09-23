@@ -46,6 +46,8 @@ class _AuthScreenState extends State<AuthScreen> {
   final signupPasswordController = TextEditingController();
   final confirmPasswordController = TextEditingController();
 
+  final authenCodeController = TextEditingController();
+
   // ----- API base -----
   final String baseUrl = 'http://10.0.2.2/api';
 
@@ -202,6 +204,7 @@ class _AuthScreenState extends State<AuthScreen> {
               'username': signupUsernameController.text,
               'email': emailController.text,
               'password': signupPasswordController.text,
+              'authen_code': authenCodeController.text,
             }),
           )
           .timeout(const Duration(seconds: 15));
@@ -269,6 +272,8 @@ class _AuthScreenState extends State<AuthScreen> {
     signupUsernameController.dispose();
     signupPasswordController.dispose();
     confirmPasswordController.dispose();
+
+    authenCodeController.dispose();
     super.dispose();
   }
 
@@ -720,7 +725,19 @@ class _AuthScreenState extends State<AuthScreen> {
             }
           },
         ),
-
+        const SizedBox(height: 12),
+        TextFormField(
+          controller: authenCodeController,
+          obscureText: true,
+          validator: (v) {
+            if (v == null || v.isEmpty) return 'กรุณากรอกรหัสยืนยัน';
+            return null;
+          },
+          decoration: _roundedDecoration(
+            label: 'รหัสยืนยัน',
+            prefix: Icons.verified_user,
+          ),
+        ),
         const SizedBox(height: 12),
         TextFormField(
           controller: signupUsernameController,

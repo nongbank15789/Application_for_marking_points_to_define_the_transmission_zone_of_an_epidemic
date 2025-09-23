@@ -337,7 +337,7 @@ void _applyFilters() {
               break;
             case 'น้อย':
               hueColor = BitmapDescriptor.hueYellow;
-              circleColor = Colors.yellow.shade700;
+              circleColor = const Color.fromARGB(255, 230, 251, 45);
               break;
             default:
               hueColor = BitmapDescriptor.hueBlue;
