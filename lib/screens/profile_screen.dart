@@ -162,7 +162,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(
-                  vertical: 30,
+                  vertical: 15,
                   horizontal: 40,
                 ),
                 child: Column(
@@ -239,7 +239,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 30),
+                    const SizedBox(height: 16),
 
                     // Info fields
                     _styledInfoField(
@@ -247,31 +247,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       "${userData!['stf_fname']} ${userData!['stf_lname']}",
                       icon: Icons.person_outline,
                     ),
-                    const SizedBox(height: 15),
+                    const SizedBox(height: 12),
                     _styledInfoField(
                       "บทบาท",
                       userData!['stf_role'] ?? "-",
                       icon: Icons.badge_outlined,
                     ),
-                    const SizedBox(height: 15),
+                    const SizedBox(height: 12),
                     _styledInfoField(
                       "Username",
                       userData!['stf_username'] ?? "-",
                       icon: Icons.account_circle_outlined,
                     ),
-                    const SizedBox(height: 15),
+                    const SizedBox(height: 12),
                     _styledInfoField(
                       "Email",
                       userData!['stf_email'] ?? "-",
                       icon: Icons.email_outlined,
                     ),
-                    const SizedBox(height: 15),
+                    const SizedBox(height: 12),
+                    _styledInfoField(
+                      "เบอร์โทรศัพท์",
+                      userData!['stf_phone'] != null
+                          ? "0${userData!['stf_phone']}" // ✅ เติม 0 ข้างหน้า
+                          : "-",
+                      icon: Icons.phone_outlined,
+                    ),
+                    const SizedBox(height: 12),
                     _styledInfoField(
                       "รหัสผ่าน",
                       "********",
                       icon: Icons.lock_outline,
                     ),
-                    const SizedBox(height: 40),
                   ],
                 ),
               ),
@@ -310,6 +317,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Text(
                   value,
                   style: const TextStyle(fontSize: 15, color: Colors.black87),
+                  overflow: TextOverflow.visible, // ✅ ไม่ตัด
+                  softWrap: true, // ✅ ขึ้นบรรทัดใหม่ได้
                 ),
               ),
             ],

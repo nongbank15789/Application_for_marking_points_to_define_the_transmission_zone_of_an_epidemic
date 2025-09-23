@@ -41,6 +41,7 @@ class _AuthScreenState extends State<AuthScreen> {
   final nameController = TextEditingController();
   final surnameController = TextEditingController();
   final emailController = TextEditingController();
+  final phoneController = TextEditingController();
   final signupUsernameController = TextEditingController();
   final signupPasswordController = TextEditingController();
   final confirmPasswordController = TextEditingController();
@@ -196,6 +197,7 @@ class _AuthScreenState extends State<AuthScreen> {
             body: json.encode({
               'name': nameController.text,
               'surname': surnameController.text,
+              'phone': phoneController.text,
               'role': selectedRole,
               'username': signupUsernameController.text,
               'email': emailController.text,
@@ -248,6 +250,7 @@ class _AuthScreenState extends State<AuthScreen> {
     nameController.clear();
     surnameController.clear();
     emailController.clear();
+    phoneController.clear();
     signupUsernameController.clear();
     signupPasswordController.clear();
     confirmPasswordController.clear();
@@ -262,6 +265,7 @@ class _AuthScreenState extends State<AuthScreen> {
     nameController.dispose();
     surnameController.dispose();
     emailController.dispose();
+    phoneController.dispose();
     signupUsernameController.dispose();
     signupPasswordController.dispose();
     confirmPasswordController.dispose();
@@ -297,7 +301,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 padding: EdgeInsets.symmetric(horizontal: size.width * 0.05),
                 child: Column(
                   children: [
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 6),
 
                     // Toggle
                     Container(
@@ -337,7 +341,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         child: _buildSignupFormFields(),
                       ),
 
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
 
                     // ปุ่มส่ง (disabled ตอน busy)
                     SizedBox(
@@ -588,8 +592,22 @@ class _AuthScreenState extends State<AuthScreen> {
             prefix: Icons.email_outlined,
           ),
         ),
-        const SizedBox(height: 16),
-
+        const SizedBox(height: 12),
+        TextFormField(
+          controller: phoneController,
+          keyboardType: TextInputType.phone,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          validator: (v) {
+            if (v == null || v.isEmpty) return 'กรุณากรอกเบอร์โทรศัพท์';
+            if (v.length < 9 || v.length > 10) return 'เบอร์โทรศัพท์ไม่ถูกต้อง';
+            return null;
+          },
+          decoration: _roundedDecoration(
+            label: 'เบอร์โทรศัพท์',
+            prefix: Icons.phone,
+          ),
+        ),
+        const SizedBox(height: 12),
         // ✅ Role dropdown
         // ฟิลด์ Role ที่แสดงในฟอร์ม
         TextFormField(

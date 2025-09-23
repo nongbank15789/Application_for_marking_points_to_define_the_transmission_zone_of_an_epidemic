@@ -63,28 +63,29 @@ class RecoveredRecord {
   });
 
   factory RecoveredRecord.fromJson(Map<String, dynamic> j) => RecoveredRecord(
-    id: int.tryParse(j['pat_id'].toString()),
-    name: j['pat_name'],
-    disease: j['pat_epidemic'],
-    startDate: j['pat_infection_date'],
-    endDate: j['pat_recovery_date'],
-    phoneNumber: j['pat_phone'],
-    dangerLevel: j['pat_danger_level'],
-    description: j['pat_description'],
-    dangerRange: j['pat_danger_range'],
-    latitude: j['pat_latitude'],
-    longitude: j['pat_longitude'],
-    houseNo: j['pat_address_house_no'],
-    soi: j['pat_address_soi'],
-    road: j['pat_address_road'],
-    village: j['pat_address_village'],
-    moo: j['pat_address_moo'],
-    subdistrict: j['pat_address_subdistrict'],
-    district: j['pat_address_district'],
-    province: j['pat_address_province'],
-    postcode: j['pat_address_postcode'],
-    landmark: j['pat_address_landmark'],
-  );
+  id: int.tryParse(j['pat_id'].toString()),
+  name: j['pat_name']?.toString(),
+  disease: j['pat_epidemic']?.toString(),
+  startDate: j['pat_infection_date']?.toString(),
+  endDate: j['pat_recovery_date']?.toString(),
+  phoneNumber: j['pat_phone']?.toString(),
+  dangerLevel: j['pat_danger_level']?.toString(),
+  description: j['pat_description']?.toString(),
+  dangerRange: j['pat_danger_range']?.toString(),
+  latitude: j['pat_latitude']?.toString(),
+  longitude: j['pat_longitude']?.toString(),
+  houseNo: j['pat_address_house_no']?.toString(),
+  soi: j['pat_address_soi']?.toString(),
+  road: j['pat_address_road']?.toString(),
+  village: j['pat_address_village']?.toString(),
+  moo: j['pat_address_moo']?.toString(),
+  subdistrict: j['pat_address_subdistrict']?.toString(),
+  district: j['pat_address_district']?.toString(),
+  province: j['pat_address_province']?.toString(),
+  postcode: j['pat_address_postcode']?.toString(),
+  landmark: j['pat_address_landmark']?.toString(),
+);
+
 
   String fullAddress() {
     final p = <String>[

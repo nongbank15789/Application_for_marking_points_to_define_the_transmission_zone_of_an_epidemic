@@ -55,75 +55,81 @@ class _FilterScreenState extends State<FilterScreen> {
   }
 
   // ====== ใช้ธีม popup ให้เหมือนหน้า AddDataScreen ======
-Theme _popupTheme(BuildContext context, Widget child) {
-  final base = Theme.of(context);
-  return Theme(
-    data: base.copyWith(
-      // สำคัญ: เซ็ตโทนสีให้ range ไม่เป็นฟ้า-เขียวของดีฟอลต์
-      colorScheme: ColorScheme.light(
-        primary: kPrimaryDark,          // วงกลมวันที่ที่เลือก +ปุ่มยืนยัน
-        onPrimary: Colors.white,
-        surface: Colors.white,
-        onSurface: Colors.black87,
+  Theme _popupTheme(BuildContext context, Widget child) {
+    final base = Theme.of(context);
+    return Theme(
+      data: base.copyWith(
+        // สำคัญ: เซ็ตโทนสีให้ range ไม่เป็นฟ้า-เขียวของดีฟอลต์
+        colorScheme: ColorScheme.light(
+          primary: kPrimaryDark, // วงกลมวันที่ที่เลือก +ปุ่มยืนยัน
+          onPrimary: Colors.white,
+          surface: Colors.white,
+          onSurface: Colors.black87,
 
-        // ใช้เป็นพื้น "ช่วงวันที่" (แถบยาว ๆ)
-        secondaryContainer: kPrimary.withOpacity(0.22),
-        onSecondaryContainer: kPrimaryDark,
-      ),
-
-      textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(
-          foregroundColor: kPrimaryDark,
-          textStyle: const TextStyle(fontWeight: FontWeight.w600),
-        ),
-      ),
-
-      dialogTheme: DialogThemeData(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      ),
-
-      datePickerTheme: DatePickerThemeData(
-        // หัวปฏิทิน
-        headerBackgroundColor: kPrimaryDark,
-        headerForegroundColor: Colors.white,
-        headerHeadlineStyle: const TextStyle(
-          fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white),
-        headerHelpStyle: const TextStyle(color: Colors.white70),
-
-        // รูปทรงโดยรวม
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          // ใช้เป็นพื้น "ช่วงวันที่" (แถบยาว ๆ)
+          secondaryContainer: kPrimary.withOpacity(0.22),
+          onSecondaryContainer: kPrimaryDark,
         ),
 
-        // วันที่ปัจจุบัน/โฮเวอร์ (ลดทับสี)
-        dayOverlayColor: const WidgetStatePropertyAll(Colors.transparent),
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(
+            foregroundColor: kPrimaryDark,
+            textStyle: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+        ),
 
-        // วงกลม “วันนี้”
-        todayBorder: BorderSide(color: kPrimaryDark, width: 1.5),
+        dialogTheme: DialogThemeData(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
 
-        // (ทางเลือก) ให้วันที่ที่เลือกเป็นขาวบนพื้น primary ชัดขึ้น
-        dayForegroundColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) return Colors.white;
-          return null;
-        }),
-        dayBackgroundColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) return kPrimaryDark;
-          return null;
-        }),
+        datePickerTheme: DatePickerThemeData(
+          // หัวปฏิทิน
+          headerBackgroundColor: kPrimaryDark,
+          headerForegroundColor: Colors.white,
+          headerHeadlineStyle: const TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
+          headerHelpStyle: const TextStyle(color: Colors.white70),
+
+          // รูปทรงโดยรวม
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+
+          // วันที่ปัจจุบัน/โฮเวอร์ (ลดทับสี)
+          dayOverlayColor: const WidgetStatePropertyAll(Colors.transparent),
+
+          // วงกลม “วันนี้”
+          todayBorder: BorderSide(color: kPrimaryDark, width: 1.5),
+
+          // (ทางเลือก) ให้วันที่ที่เลือกเป็นขาวบนพื้น primary ชัดขึ้น
+          dayForegroundColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) return Colors.white;
+            return null;
+          }),
+          dayBackgroundColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) return kPrimaryDark;
+            return null;
+          }),
+        ),
       ),
-    ),
-    // บังคับขนาด popup ให้พอดีเหมือนภาพตัวอย่าง (ไม่ใหญ่เกิน)
-    child: Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 360, maxHeight: 560),
-        child: child,
+      // บังคับขนาด popup ให้พอดีเหมือนภาพตัวอย่าง (ไม่ใหญ่เกิน)
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 360, maxHeight: 560),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20), // บังคับ child โค้งตามด้วย
+            child: child,
+          ),
+        ),
       ),
-    ),
-  );
-}
-
-
+    );
+  }
 
   Future<void> _fetchDiseases() async {
     setState(() {
@@ -207,46 +213,46 @@ Theme _popupTheme(BuildContext context, Widget child) {
 
   // ========= Date Range =========
   Future<void> _pickRange({required bool forInfection}) async {
-  final now = DateTime.now();
-  final firstDate = DateTime(now.year - 5, 1, 1);
-  final lastDate  = DateTime(now.year + 2, 12, 31);
-  final initial   = forInfection ? _infectedRange : _recoveryRange;
+    final now = DateTime.now();
+    final firstDate = DateTime(now.year - 5, 1, 1);
+    final lastDate = DateTime(now.year + 2, 12, 31);
+    final initial = forInfection ? _infectedRange : _recoveryRange;
 
-  final picked = await showDateRangePicker(
-    context: context,
-    initialDateRange: initial ??
-        DateTimeRange(start: DateTime(now.year, now.month, 1), end: now),
-    firstDate: firstDate,
-    lastDate: lastDate,
-    locale: const Locale('th', 'TH'),
-    helpText: 'เลือกวันที่',     // บรรทัดหัวด้านซ้ายเหมือนในรูป
-    cancelText: 'ยกเลิก',
-    saveText: 'ตกลง',
-    builder: (ctx, child) {
-      // ใส่ธีม + บังคับขนาด dialog ให้คล้ายภาพตัวอย่าง
-      return _popupTheme(
-        ctx,
-        Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 360), // ขนาดพอดี
-            child: child!,
+    final picked = await showDateRangePicker(
+      context: context,
+      initialDateRange:
+          initial ??
+          DateTimeRange(start: DateTime(now.year, now.month, 1), end: now),
+      firstDate: firstDate,
+      lastDate: lastDate,
+      locale: const Locale('th', 'TH'),
+      helpText: 'เลือกวันที่', // บรรทัดหัวด้านซ้ายเหมือนในรูป
+      cancelText: 'ยกเลิก',
+      saveText: 'ตกลง',
+      builder: (ctx, child) {
+        // ใส่ธีม + บังคับขนาด dialog ให้คล้ายภาพตัวอย่าง
+        return _popupTheme(
+          ctx,
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 360), // ขนาดพอดี
+              child: child!,
+            ),
           ),
-        ),
-      );
-    },
-  );
+        );
+      },
+    );
 
-  if (picked != null) {
-    setState(() {
-      if (forInfection) {
-        _infectedRange = picked;
-      } else {
-        _recoveryRange = picked;
-      }
-    });
+    if (picked != null) {
+      setState(() {
+        if (forInfection) {
+          _infectedRange = picked;
+        } else {
+          _recoveryRange = picked;
+        }
+      });
+    }
   }
-}
-
 
   String _rangeLabel(DateTimeRange? r) {
     if (r == null) return 'เลือกช่วงวันที่';
@@ -374,68 +380,68 @@ Theme _popupTheme(BuildContext context, Widget child) {
 
   // ===== การ์ด "เลือกช่วงวันที่" =====
   // ===== การ์ด "เลือกช่วงวันที่" (compact เฉพาะ 2 บล็อกบน) =====
-Widget _dateRangeCard({
-  required IconData icon,
-  required String title,
-  required DateTimeRange? value,
-  required VoidCallback onPick,
-  required VoidCallback onClear,
-}) {
-  final selected = value != null;
+  Widget _dateRangeCard({
+    required IconData icon,
+    required String title,
+    required DateTimeRange? value,
+    required VoidCallback onPick,
+    required VoidCallback onClear,
+  }) {
+    final selected = value != null;
 
-  return Container(
-    padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
-    margin: const EdgeInsets.only(bottom: 12),
-    decoration: BoxDecoration(
-      color: const Color(0xFFEAF7FB),
-      borderRadius: BorderRadius.circular(_cardRadius),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.12),
-          blurRadius: 10,
-          offset: const Offset(0, 6),
-        ),
-      ],
-      border: Border.all(color: kBorder, width: 1),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // หัวการ์ด
-        _cardHeader(
-          icon,
-          title,
-          trailing: selected
-              ? TextButton(
-                  onPressed: onClear,
-                  child: const Text('ล้างช่วง'),
-                )
-              : null,
-        ),
-        const SizedBox(height: 10),
-
-        // ปุ่มช่วงวันที่ (ไม่มีการยืดความสูงคงที่อีกต่อไป)
-        _pill(
-          label: _rangeLabel(value),
-          selected: selected,
-          onTap: onPick,
-          icon: Icons.date_range_rounded,
-        ),
-
-        // บรรทัดสรุปล่าง (ลดช่องว่างให้พอดี)
-        const SizedBox(height: 8),
-        Align(
-          alignment: Alignment.centerRight,
-          child: Text(
-            selected ? 'เลือก: ${_rangeLabel(value)}' : 'เลือก: ทั้งหมด',
-            style: TextStyle(fontSize: 12.5, color: Colors.grey.shade700),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEAF7FB),
+        borderRadius: BorderRadius.circular(_cardRadius),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.12),
+            blurRadius: 10,
+            offset: const Offset(0, 6),
           ),
-        ),
-      ],
-    ),
-  );
-}
+        ],
+        border: Border.all(color: kBorder, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // หัวการ์ด
+          _cardHeader(
+            icon,
+            title,
+            trailing:
+                selected
+                    ? TextButton(
+                      onPressed: onClear,
+                      child: const Text('ล้างช่วง'),
+                    )
+                    : null,
+          ),
+          const SizedBox(height: 10),
 
+          // ปุ่มช่วงวันที่ (ไม่มีการยืดความสูงคงที่อีกต่อไป)
+          _pill(
+            label: _rangeLabel(value),
+            selected: selected,
+            onTap: onPick,
+            icon: Icons.date_range_rounded,
+          ),
+
+          // บรรทัดสรุปล่าง (ลดช่องว่างให้พอดี)
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Text(
+              selected ? 'เลือก: ${_rangeLabel(value)}' : 'เลือก: ทั้งหมด',
+              style: TextStyle(fontSize: 12.5, color: Colors.grey.shade700),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   // ===== การ์ด “โรคที่ติด” =====
   Widget _diseaseCardVertical() {
