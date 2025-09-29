@@ -283,7 +283,7 @@ class _SearchBar extends StatelessWidget {
             child: TextField(
               controller: controller,
               decoration: const InputDecoration(
-                hintText: 'Search',
+                hintText: 'ค้นหา...',
                 hintStyle: TextStyle(color: Colors.grey),
                 border: InputBorder.none,
                 contentPadding: EdgeInsets.symmetric(
@@ -386,7 +386,7 @@ class _HistoryCard extends StatelessWidget {
                   ),
                   IconButton(
                     icon: const Icon(
-                      Icons.fullscreen_outlined,
+                      Icons.edit_outlined,
                       color: Color(0xFF0D47A1),
                     ),
                     onPressed: onEdit,
@@ -712,7 +712,7 @@ class _EditDialogRecoveredState extends State<_EditDialogRecovered> {
                 child: const Text('ยกเลิก'),
               ),
               ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0E47A1)),
                 onPressed: () => Navigator.pop(ctx, true),
                 child: const Text(
                   'ตกลง',

@@ -255,13 +255,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     const SizedBox(height: 12),
                     _styledInfoField(
-                      "Username",
+                      "ชื่อผู้ใช้",
                       userData!['stf_username'] ?? "-",
                       icon: Icons.account_circle_outlined,
                     ),
                     const SizedBox(height: 12),
                     _styledInfoField(
-                      "Email",
+                      "อีเมล",
                       userData!['stf_email'] ?? "-",
                       icon: Icons.email_outlined,
                     ),

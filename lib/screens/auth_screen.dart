@@ -293,11 +293,11 @@ class _AuthScreenState extends State<AuthScreen> {
               ArcBandsHeader(
                 height: 280,
                 cardRadius: 36,
-                title: isLogin ? 'Log In' : 'Sign Up',
+                title: isLogin ? 'เข้าสู่ระบบ' : 'สมัครสมาชิก',
                 subtitle:
                     isLogin
-                        ? 'Welcome back! Please enter your details to continue.'
-                        : 'Register to Start Your Exciting Learning Process',
+                        ? 'ยินดีต้อนรับกลับมา! กรุณากรอกรายละเอียดของคุณเพื่อดำเนินการต่อ.'
+                        : 'ลงทะเบียนเพื่อเริ่มกระบวนการเรียนรู้ที่น่าตื่นเต้นของคุณ.',
                 onBack: _busy ? null : () => Navigator.maybePop(context),
               ),
 
@@ -324,8 +324,8 @@ class _AuthScreenState extends State<AuthScreen> {
                       ),
                       child: Row(
                         children: [
-                          _tabButton('Log In', isLogin),
-                          _tabButton('Sign Up', !isLogin),
+                          _tabButton('เข้าสู่ระบบ', isLogin),
+                          _tabButton('สมัครสมาชิก', !isLogin),
                         ],
                       ),
                     ),
@@ -401,7 +401,7 @@ class _AuthScreenState extends State<AuthScreen> {
                                   ),
                                 )
                                 : Text(
-                                  isLogin ? 'Log In' : 'Sign Up',
+                                  isLogin ? 'เข้าสู่ระบบ' : 'สมัครสมาชิก',
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 18,
@@ -430,7 +430,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 ? null
                 : () {
                   setState(() {
-                    if (text == 'Log In') {
+                    if (text == 'เข้าสู่ระบบ') {
                       isLogin = true;
                       _signupFormKey.currentState?.reset();
                       _signupAV = AutovalidateMode.disabled;
@@ -495,9 +495,9 @@ class _AuthScreenState extends State<AuthScreen> {
         TextFormField(
           controller: loginUsernameController,
           validator:
-              (v) => (v == null || v.isEmpty) ? 'กรุณากรอก Username' : null,
+              (v) => (v == null || v.isEmpty) ? 'กรุณากรอกชื่อผู้ใช้' : null,
           decoration: _roundedDecoration(
-            label: 'Username',
+            label: 'ชื่อผู้ใช้',
             prefix: Icons.person,
           ),
         ),
@@ -511,7 +511,7 @@ class _AuthScreenState extends State<AuthScreen> {
             return null;
           },
           decoration: _roundedDecoration(
-            label: 'Password',
+            label: 'รหัสผ่าน',
             prefix: Icons.lock,
             suffix: IconButton(
               onPressed:
@@ -533,7 +533,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 borderRadius: BorderRadius.circular(4),
               ),
             ),
-            const Text('Remember me'),
+            const Text('จดจำฉัน'),
           ],
         ),
       ],
@@ -587,13 +587,13 @@ class _AuthScreenState extends State<AuthScreen> {
             FilteringTextInputFormatter.allow(RegExp(r'[\w@\.-]')),
           ],
           validator: (v) {
-            if (v == null || v.isEmpty) return 'กรุณากรอก Email';
+            if (v == null || v.isEmpty) return 'กรุณากรอกอีเมล';
             final emailRegExp = RegExp(r'^[^@]+@[^@]+\.[^@]+');
-            if (!emailRegExp.hasMatch(v)) return 'กรุณาตรวจสอบรูปแบบ Email';
+            if (!emailRegExp.hasMatch(v)) return 'กรุณาตรวจสอบรูปแบบอีเมล';
             return null;
           },
           decoration: _roundedDecoration(
-            label: 'Email address',
+            label: 'อีเมล',
             prefix: Icons.email_outlined,
           ),
         ),
@@ -618,9 +618,9 @@ class _AuthScreenState extends State<AuthScreen> {
         TextFormField(
           controller: TextEditingController(text: selectedRole ?? ''),
           readOnly: true,
-          validator: (v) => v == null || v.isEmpty ? 'กรุณาเลือก Role' : null,
+          validator: (v) => v == null || v.isEmpty ? 'กรุณาเลือกบทบาท' : null,
           decoration: _roundedDecoration(
-            label: 'Role',
+            label: 'บทบาท',
             prefix: Icons.badge_outlined,
             suffix: const Icon(Icons.arrow_drop_down),
           ),
@@ -745,14 +745,14 @@ class _AuthScreenState extends State<AuthScreen> {
             FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9_.]')),
           ],
           validator: (v) {
-            if (v == null || v.isEmpty) return 'กรุณากรอก Username';
+            if (v == null || v.isEmpty) return 'กรุณากรอกชื่อผู้ใช้';
             if (!usernameEmailRegExp.hasMatch(v)) {
-              return 'Username ต้องเป็น a-z, 0-9, _ หรือ .';
+              return 'ชื่อผู้ใช้ ต้องเป็น a-z, 0-9, _ หรือ .';
             }
             return null;
           },
           decoration: _roundedDecoration(
-            label: 'Username',
+            label: 'ชื่อผู้ใช้',
             prefix: Icons.alternate_email,
           ),
         ),
@@ -767,7 +767,7 @@ class _AuthScreenState extends State<AuthScreen> {
             return null;
           },
           decoration: _roundedDecoration(
-            label: 'Password',
+            label: 'รหัสผ่าน',
             prefix: Icons.lock_outline,
             suffix: IconButton(
               onPressed:
@@ -789,7 +789,7 @@ class _AuthScreenState extends State<AuthScreen> {
             return null;
           },
           decoration: _roundedDecoration(
-            label: 'Confirm Password',
+            label: 'ยืนยันรหัสผ่าน',
             prefix: Icons.lock_outline,
             suffix: IconButton(
               onPressed:

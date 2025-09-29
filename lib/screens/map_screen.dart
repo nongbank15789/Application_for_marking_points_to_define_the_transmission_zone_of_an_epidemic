@@ -1266,7 +1266,7 @@ Widget _buildPatientToggle() {
                             controller: _searchController,
                             style: const TextStyle(color: Colors.white),
                             decoration: const InputDecoration(
-                              hintText: 'Search',
+                              hintText: 'ค้นหา...',
                               hintStyle: TextStyle(color: Colors.white),
                               border: InputBorder.none,
                             ),
