@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
+import 'package:project/screens/config.dart';
 
 class FilterScreen extends StatefulWidget {
   const FilterScreen({super.key});
@@ -143,7 +144,7 @@ class _FilterScreenState extends State<FilterScreen> {
 
     try {
       final res = await http.get(
-        Uri.parse('http://10.0.2.2/api/get_all_patients.php'),
+        ApiConfig.u('/get_all_patients.php'),
       );
       if (res.statusCode != 200) {
         throw Exception('HTTP ${res.statusCode}');

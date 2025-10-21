@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'map_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'config.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key, this.bypassAutoLogin = false});
@@ -49,7 +50,6 @@ class _AuthScreenState extends State<AuthScreen> {
   final authenCodeController = TextEditingController();
 
   // ----- API base -----
-  final String baseUrl = 'http://10.0.2.2/api';
 
   @override
   void initState() {
@@ -120,7 +120,7 @@ class _AuthScreenState extends State<AuthScreen> {
     final messenger = ScaffoldMessenger.of(context);
     if (!silent) AppSnack.loading(context, 'กำลังเข้าสู่ระบบ...');
 
-    final url = Uri.parse('$baseUrl/login.php');
+    final url = ApiConfig.u('/login.php');
 
     try {
       final response = await http
@@ -189,7 +189,7 @@ class _AuthScreenState extends State<AuthScreen> {
     setState(() => _busy = true);
     final messenger = ScaffoldMessenger.of(context);
     AppSnack.loading(context, 'กำลังลงทะเบียน...');
-    final url = Uri.parse('$baseUrl/register.php');
+    final url = ApiConfig.u('/register.php');
 
     try {
       final response = await http

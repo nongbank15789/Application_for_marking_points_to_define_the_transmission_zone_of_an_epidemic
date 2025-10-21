@@ -4,16 +4,15 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'map_screen.dart';
-
-const _apiBase = '10.0.2.2:80';
+import 'config.dart';
 
 // endpoint สำหรับ “ผู้ป่วยหายแล้ว”
-const _getEndpoint = '/api/get_recovered.php';
-const _updateEndpoint = '/api/save_patient.php';
-const _deleteEndpoint = '/api/delete_recovered.php';
+const _getEndpoint = '/get_recovered.php';
+const _updateEndpoint = '/save_patient.php';
+const _deleteEndpoint = '/delete_recovered.php';
 
 // ใช้ endpoint รายการโรค (เหมือนหน้า add_data)
-const _diseasesEndpoint = 'http://10.0.2.2/api/add_data.php?mode=diseases';
+final _diseasesEndpoint = ApiConfig.u('add_data.php', {'mode': 'diseases'});
 
 class RecoveredRecord {
   final int? id;
@@ -145,7 +144,7 @@ class _RecoveredHistoryScreenState extends State<RecoveredHistoryScreen> {
   Future<List<RecoveredRecord>> _fetch([String? q]) async {
     final qp = <String, String>{};
     if ((q ?? '').isNotEmpty) qp['search'] = q!;
-    final uri = Uri.http(_apiBase, _getEndpoint, qp);
+    final uri = ApiConfig.u(_getEndpoint, qp);
 
     final res = await http.get(uri);
     if (res.statusCode != 200) {
@@ -611,7 +610,7 @@ class _EditDialogRecoveredState extends State<_EditDialogRecovered> {
   Future<void> _fetchDiseases() async {
     setState(() => _loadingDiseases = true);
     try {
-      final res = await http.get(Uri.parse(_diseasesEndpoint));
+      final res = await http.get(_diseasesEndpoint);
       final setNames = <String>{};
       if (res.statusCode == 200) {
         final decoded = jsonDecode(res.body);
@@ -1205,7 +1204,7 @@ class _EditDialogRecoveredState extends State<_EditDialogRecovered> {
     );
     try {
       final res = await http.post(
-        Uri.http(_apiBase, _updateEndpoint),
+        ApiConfig.u(_updateEndpoint),
         headers: {'Content-Type': 'application/json; charset=utf-8'},
         body: utf8.encode(jsonEncode(body)),
       );
@@ -1241,7 +1240,7 @@ class _EditDialogRecoveredState extends State<_EditDialogRecovered> {
     );
     try {
       final res = await http.post(
-        Uri.http(_apiBase, _deleteEndpoint),
+        Uri.http(ApiConfig.host, _deleteEndpoint),
         headers: {'Content-Type': 'application/json; charset=utf-8'},
         body: utf8.encode(jsonEncode({'id': widget.record.id})),
       );

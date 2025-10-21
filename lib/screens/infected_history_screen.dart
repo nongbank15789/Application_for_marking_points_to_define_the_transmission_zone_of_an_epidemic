@@ -3,11 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'map_screen.dart';
+import 'config.dart';
 
-const _apiBase = '10.0.2.2:80';
-const _getEndpoint = '/api/get_history.php';
-const _updateEndpoint = '/api/save_patient.php';
-const _deleteEndpoint = '/api/delete_history.php';
+final _getEndpoint = '/get_history.php';
+final _updateEndpoint = '/save_patient.php';
+final _deleteEndpoint = '/delete_history.php';
 
 // ===== Theme helpers for badge & app =====
 const _primary = Color(0xFF0E47A1);
@@ -147,7 +147,7 @@ class _InfectedHistoryScreenState extends State<InfectedHistoryScreen> {
   Future<List<InfectedRecord>> _fetch([String? q]) async {
     final qp = <String, String>{};
     if ((q ?? '').isNotEmpty) qp['search'] = q!;
-    final uri = Uri.http(_apiBase, _getEndpoint, qp);
+    final uri = ApiConfig.u(_getEndpoint, qp);
     final res = await http.get(uri);
     if (res.statusCode != 200) {
       throw Exception('Failed: ${res.statusCode} ${res.body}');
@@ -670,7 +670,7 @@ class _EditDialogInfectedState extends State<_EditDialogInfected> {
     setState(() => _loadingDiseases = true);
     try {
       final res = await http.get(
-        Uri.parse('http://10.0.2.2/api/add_data.php?mode=diseases'),
+        ApiConfig.u('add_data.php', {'mode': 'diseases'}),
       );
       final setNames = <String>{};
       if (res.statusCode == 200) {
@@ -1265,7 +1265,7 @@ class _EditDialogInfectedState extends State<_EditDialogInfected> {
 
     try {
       final res = await http.post(
-        Uri.http(_apiBase, _updateEndpoint),
+        ApiConfig.u(_updateEndpoint),
         headers: {'Content-Type': 'application/json; charset=utf-8'},
         body: utf8.encode(jsonEncode(body)),
       );
@@ -1303,7 +1303,7 @@ class _EditDialogInfectedState extends State<_EditDialogInfected> {
 
     try {
       final res = await http.post(
-        Uri.http(_apiBase, _deleteEndpoint),
+        ApiConfig.u(_deleteEndpoint),
         headers: {'Content-Type': 'application/json; charset=utf-8'},
         body: utf8.encode(jsonEncode({'id': widget.record.id})),
       );

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'map_screen.dart';
+import 'config.dart';
 
 class ProfileScreen extends StatefulWidget {
   final int userId;
@@ -31,7 +32,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     var request = http.MultipartRequest(
       'POST',
-      Uri.parse("http://10.0.2.2/api/upload_avatar.php"),
+       ApiConfig.u('upload_avatar.php'),
     );
     request.fields['stf_id'] = widget.userId.toString();
     request.files.add(
@@ -79,7 +80,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> fetchUser(int id) async {
     try {
       final response = await http.get(
-        Uri.parse("http://10.0.2.2/api/get_user.php?stf_id=$id"),
+        ApiConfig.u('get_user.php', {'stf_id': id.toString()}),
       );
 
       if (response.statusCode == 200) {
@@ -187,9 +188,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                                 userData!['stf_avatar']
                                                     .toString()
                                                     .isNotEmpty
-                                            ? NetworkImage(
-                                              "http://10.0.2.2/api/${userData!['stf_avatar']}",
-                                            )
+                                            ? NetworkImage(ApiConfig.url(userData!['stf_avatar']))
                                             : null)
                                         as ImageProvider?,
                             child:

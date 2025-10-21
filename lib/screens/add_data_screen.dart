@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'map_screen.dart';
+import 'config.dart';
 
 class AddDataScreen extends StatefulWidget {
   final double? latitude;
@@ -194,7 +195,7 @@ class _AddDataScreenState extends State<AddDataScreen> {
   Future<void> _fetchDiseases() async {
     setState(() => _loadingDiseases = true);
     try {
-      final res = await http.get(Uri.parse('http://10.0.2.2/api/add_data.php?mode=diseases'));
+      final res = await http.get(ApiConfig.u('add_data.php', {'mode': 'diseases'}),);
       if (res.statusCode == 200) {
         final decoded = jsonDecode(res.body);
         final setNames = <String>{};
@@ -395,7 +396,7 @@ class _AddDataScreenState extends State<AddDataScreen> {
       if (_addrPostcode.text.trim().isNotEmpty) _addrPostcode.text.trim(),
     ].join(' ');
 
-    final url = Uri.parse('http://10.0.2.2/api/add_data.php');
+    final url = ApiConfig.u('/add_data.php');
 
     final dataToSave = {
       // ผู้ป่วย

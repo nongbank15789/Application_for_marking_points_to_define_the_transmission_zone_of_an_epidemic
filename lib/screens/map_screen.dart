@@ -5,6 +5,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:project/screens/auth_screen.dart';
+import 'package:project/screens/config.dart';
 import 'drawer_list_item.dart';
 import 'profile_screen.dart';
 import 'filter_screen.dart';
@@ -152,7 +153,7 @@ class _MapScreenState extends State<MapScreen> {
     if (userId == null) return;
     try {
       final response = await http.get(
-        Uri.parse("http://10.0.2.2/api/get_user.php?stf_id=$userId"),
+        ApiConfig.u('get_user.php', {'stf_id': userId.toString()}),
       );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -171,9 +172,7 @@ class _MapScreenState extends State<MapScreen> {
 
   Future<void> _fetchPatientData() async {
     try {
-      final response = await http.get(
-        Uri.parse("http://10.0.2.2/api/get_all_patients.php"),
-      );
+      final response = await http.get(ApiConfig.u("/get_all_patients.php"));
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         setState(() {
@@ -214,80 +213,86 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   /// ---------- กรองข้อมูลด้วยฟิลเตอร์ใหม่ ----------
-void _applyFilters() {
-  final String diseaseFilter =
-      (_activeFilters['disease'] ?? 'ทั้งหมด').toString();
-  final String dangerFilter =
-      (_activeFilters['danger'] ?? 'ทั้งหมด').toString();
+  void _applyFilters() {
+    final String diseaseFilter =
+        (_activeFilters['disease'] ?? 'ทั้งหมด').toString();
+    final String dangerFilter =
+        (_activeFilters['danger'] ?? 'ทั้งหมด').toString();
 
-  final DateTime? infectedStart = _parseYmdToDate(
-    _activeFilters['infectedStart']?.toString(),
-  );
-  final DateTime? infectedEnd = _parseYmdToDate(
-    _activeFilters['infectedEnd']?.toString(),
-  );
-  final DateTime? recoveryStart = _parseYmdToDate(
-    _activeFilters['recoveryStart']?.toString(),
-  );
-  final DateTime? recoveryEnd = _parseYmdToDate(
-    _activeFilters['recoveryEnd']?.toString(),
-  );
+    final DateTime? infectedStart = _parseYmdToDate(
+      _activeFilters['infectedStart']?.toString(),
+    );
+    final DateTime? infectedEnd = _parseYmdToDate(
+      _activeFilters['infectedEnd']?.toString(),
+    );
+    final DateTime? recoveryStart = _parseYmdToDate(
+      _activeFilters['recoveryStart']?.toString(),
+    );
+    final DateTime? recoveryEnd = _parseYmdToDate(
+      _activeFilters['recoveryEnd']?.toString(),
+    );
 
-  final filteredPatients = _allPatients.where((patient) {
-    final isRecovered = _isRecovered(patient['pat_recovery_date']?.toString());
+    final filteredPatients =
+        _allPatients.where((patient) {
+          final isRecovered = _isRecovered(
+            patient['pat_recovery_date']?.toString(),
+          );
 
-    // 👇 ปรับเงื่อนไข: แสดงได้ทั้ง 2 ถ้าเลือก
-    if (!_showInfected && !isRecovered) return false; // ไม่โชว์ infected
-    if (!_showRecovered && isRecovered) return false; // ไม่โชว์ recovered
+          // 👇 ปรับเงื่อนไข: แสดงได้ทั้ง 2 ถ้าเลือก
+          if (!_showInfected && !isRecovered) return false; // ไม่โชว์ infected
+          if (!_showRecovered && isRecovered) return false; // ไม่โชว์ recovered
 
-    final isDiseaseMatch =
-        diseaseFilter == 'ทั้งหมด' ||
-        (patient['pat_epidemic']?.toString() ?? '') == diseaseFilter;
+          final isDiseaseMatch =
+              diseaseFilter == 'ทั้งหมด' ||
+              (patient['pat_epidemic']?.toString() ?? '') == diseaseFilter;
 
-    final isDangerMatch =
-        dangerFilter == 'ทั้งหมด' ||
-        (patient['pat_danger_level']?.toString() ?? '') == dangerFilter;
+          final isDangerMatch =
+              dangerFilter == 'ทั้งหมด' ||
+              (patient['pat_danger_level']?.toString() ?? '') == dangerFilter;
 
-    bool isInfectionDateMatch = true;
-    final DateTime? infectedDate =
-        _parseYmdToDate(patient['pat_infection_date']?.toString());
-    if (infectedStart != null || infectedEnd != null) {
-      if (infectedDate == null) {
-        isInfectionDateMatch = false;
-      } else {
-        if (infectedStart != null && infectedDate.isBefore(infectedStart)) {
-          isInfectionDateMatch = false;
-        }
-        if (infectedEnd != null && infectedDate.isAfter(infectedEnd)) {
-          isInfectionDateMatch = false;
-        }
-      }
-    }
+          bool isInfectionDateMatch = true;
+          final DateTime? infectedDate = _parseYmdToDate(
+            patient['pat_infection_date']?.toString(),
+          );
+          if (infectedStart != null || infectedEnd != null) {
+            if (infectedDate == null) {
+              isInfectionDateMatch = false;
+            } else {
+              if (infectedStart != null &&
+                  infectedDate.isBefore(infectedStart)) {
+                isInfectionDateMatch = false;
+              }
+              if (infectedEnd != null && infectedDate.isAfter(infectedEnd)) {
+                isInfectionDateMatch = false;
+              }
+            }
+          }
 
-    bool isRecoveryDateMatch = true;
-    final DateTime? recDate =
-        _parseYmdToDate(patient['pat_recovery_date']?.toString());
-    if (recoveryStart != null || recoveryEnd != null) {
-      if (recDate == null) {
-        isRecoveryDateMatch = false;
-      } else {
-        if (recoveryStart != null && recDate.isBefore(recoveryStart)) {
-          isRecoveryDateMatch = false;
-        }
-        if (recoveryEnd != null && recDate.isAfter(recoveryEnd)) {
-          isRecoveryDateMatch = false;
-        }
-      }
-    }
+          bool isRecoveryDateMatch = true;
+          final DateTime? recDate = _parseYmdToDate(
+            patient['pat_recovery_date']?.toString(),
+          );
+          if (recoveryStart != null || recoveryEnd != null) {
+            if (recDate == null) {
+              isRecoveryDateMatch = false;
+            } else {
+              if (recoveryStart != null && recDate.isBefore(recoveryStart)) {
+                isRecoveryDateMatch = false;
+              }
+              if (recoveryEnd != null && recDate.isAfter(recoveryEnd)) {
+                isRecoveryDateMatch = false;
+              }
+            }
+          }
 
-    return isDiseaseMatch &&
-        isDangerMatch &&
-        isInfectionDateMatch &&
-        isRecoveryDateMatch;
-  }).toList();
+          return isDiseaseMatch &&
+              isDangerMatch &&
+              isInfectionDateMatch &&
+              isRecoveryDateMatch;
+        }).toList();
 
-  _addMarkersAndCirclesFromData(filteredPatients);
-}
+    _addMarkersAndCirclesFromData(filteredPatients);
+  }
 
   void _addMarkersAndCirclesFromData(List<dynamic> patientData) {
     setState(() {
@@ -877,90 +882,91 @@ void _applyFilters() {
     });
   }
 
-Widget _buildPatientToggle() {
-  return Positioned(
-    top: MediaQuery.of(context).padding.top + 65,
-    left: 16,
-    right: 16,
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        // ปุ่ม ผู้ป่วยติดเชื้อ
-        ElevatedButton.icon(
-          onPressed: () {
-            setState(() {
-              _showInfected = !_showInfected;
-            });
-            _applyFilters();
-          },
-          icon: Icon(
-            Icons.sick_outlined,
-            size: 18, // ไอคอนเล็กลง
-            color: _showInfected ? Colors.white : Colors.black87,
-          ),
-          label: Text(
-            "ผู้ป่วยติดเชื้อ",
-            style: TextStyle(
-              fontSize: 13, // ลด font ลง
+  Widget _buildPatientToggle() {
+    return Positioned(
+      top: MediaQuery.of(context).padding.top + 65,
+      left: 16,
+      right: 16,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // ปุ่ม ผู้ป่วยติดเชื้อ
+          ElevatedButton.icon(
+            onPressed: () {
+              setState(() {
+                _showInfected = !_showInfected;
+              });
+              _applyFilters();
+            },
+            icon: Icon(
+              Icons.sick_outlined,
+              size: 18, // ไอคอนเล็กลง
               color: _showInfected ? Colors.white : Colors.black87,
-              fontWeight: FontWeight.w600,
             ),
-          ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor:
-                _showInfected ? const Color(0xFF0E47A1) : Colors.white,
-            elevation: 2,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            minimumSize: const Size(0, 36), // ความสูงลดลง
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-              side: BorderSide(
-                color: _showInfected ? const Color(0xFF0E47A1) : Colors.black26,
+            label: Text(
+              "ผู้ป่วยติดเชื้อ",
+              style: TextStyle(
+                fontSize: 13, // ลด font ลง
+                color: _showInfected ? Colors.white : Colors.black87,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor:
+                  _showInfected ? const Color(0xFF0E47A1) : Colors.white,
+              elevation: 2,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              minimumSize: const Size(0, 36), // ความสูงลดลง
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+                side: BorderSide(
+                  color:
+                      _showInfected ? const Color(0xFF0E47A1) : Colors.black26,
+                ),
               ),
             ),
           ),
-        ),
-        const SizedBox(width: 8),
-        // ปุ่ม ผู้ป่วยหายแล้ว
-        ElevatedButton.icon(
-          onPressed: () {
-            setState(() {
-              _showRecovered = !_showRecovered;
-            });
-            _applyFilters();
-          },
-          icon: Icon(
-            Icons.verified_user_outlined,
-            size: 18,
-            color: _showRecovered ? Colors.white : Colors.black87,
-          ),
-          label: Text(
-            "ผู้ป่วยหายแล้ว",
-            style: TextStyle(
-              fontSize: 13,
+          const SizedBox(width: 8),
+          // ปุ่ม ผู้ป่วยหายแล้ว
+          ElevatedButton.icon(
+            onPressed: () {
+              setState(() {
+                _showRecovered = !_showRecovered;
+              });
+              _applyFilters();
+            },
+            icon: Icon(
+              Icons.verified_user_outlined,
+              size: 18,
               color: _showRecovered ? Colors.white : Colors.black87,
-              fontWeight: FontWeight.w600,
             ),
-          ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor:
-                _showRecovered ? const Color(0xFF0E47A1) : Colors.white,
-            elevation: 2,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            minimumSize: const Size(0, 36),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-              side: BorderSide(
-                color: _showRecovered ? const Color(0xFF0E47A1) : Colors.black26,
+            label: Text(
+              "ผู้ป่วยหายแล้ว",
+              style: TextStyle(
+                fontSize: 13,
+                color: _showRecovered ? Colors.white : Colors.black87,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor:
+                  _showRecovered ? const Color(0xFF0E47A1) : Colors.white,
+              elevation: 2,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              minimumSize: const Size(0, 36),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+                side: BorderSide(
+                  color:
+                      _showRecovered ? const Color(0xFF0E47A1) : Colors.black26,
+                ),
               ),
             ),
           ),
-        ),
-      ],
-    ),
-  );
-}
-
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1049,7 +1055,7 @@ Widget _buildPatientToggle() {
                             (userData != null &&
                                     userData!['stf_avatar'] != null)
                                 ? NetworkImage(
-                                  "http://10.0.2.2/api/${userData!['stf_avatar']}",
+                                  ApiConfig.url(userData!['stf_avatar']),
                                 )
                                 : null,
                         child:
