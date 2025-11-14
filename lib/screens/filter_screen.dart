@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
-import 'package:project/screens/config.dart';
+import 'config.dart';
 
 class FilterScreen extends StatefulWidget {
   const FilterScreen({super.key});
@@ -68,7 +68,7 @@ class _FilterScreenState extends State<FilterScreen> {
           onSurface: Colors.black87,
 
           // ใช้เป็นพื้น "ช่วงวันที่" (แถบยาว ๆ)
-          secondaryContainer: kPrimary.withOpacity(0.22),
+          secondaryContainer: kPrimary,
           onSecondaryContainer: kPrimaryDark,
         ),
 
@@ -282,16 +282,6 @@ class _FilterScreenState extends State<FilterScreen> {
               color: selected ? kPrimaryDark : const Color(0xFFFFFFFF),
               width: 1.2,
             ),
-            boxShadow:
-                selected
-                    ? [
-                      BoxShadow(
-                        color: kPrimaryDark.withOpacity(0.18),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ]
-                    : const [],
           ),
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Row(
@@ -358,10 +348,10 @@ class _FilterScreenState extends State<FilterScreen> {
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: kPrimary.withOpacity(0.15),
+            color: kPrimary,
             borderRadius: BorderRadius.circular(10),
           ),
-          child: Icon(icon, color: kPrimary, size: 20),
+          child: Icon(icon, color: const Color.fromARGB(255, 255, 255, 255), size: 20),
         ),
         const SizedBox(width: 10),
         Expanded(
@@ -396,13 +386,6 @@ class _FilterScreenState extends State<FilterScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFFEAF7FB),
         borderRadius: BorderRadius.circular(_cardRadius),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.12),
-            blurRadius: 10,
-            offset: const Offset(0, 6),
-          ),
-        ],
         border: Border.all(color: kBorder, width: 1),
       ),
       child: Column(
@@ -497,13 +480,6 @@ class _FilterScreenState extends State<FilterScreen> {
       decoration: BoxDecoration(
         color: kCardBg,
         borderRadius: BorderRadius.circular(_cardRadius),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.12),
-            blurRadius: 10,
-            offset: const Offset(0, 6),
-          ),
-        ],
         border: Border.all(color: kBorder, width: 1),
       ),
       child: Column(
@@ -511,7 +487,7 @@ class _FilterScreenState extends State<FilterScreen> {
         children: [
           _cardHeader(
             Icons.coronavirus_rounded,
-            'โรคระบาด   ที่ติด',
+            'โรคระบาดที่ติด',
             trailing:
                 _diseaseLoading
                     ? const SizedBox(
@@ -582,7 +558,8 @@ class _FilterScreenState extends State<FilterScreen> {
                 setSB(() {});
               }
 
-              return AlertDialog(
+              return AlertDialog( 
+                insetPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 24),
                 title: const Text('เลือก โรคที่ติด'),
                 content: SizedBox(
                   width: double.maxFinite,
@@ -616,27 +593,26 @@ class _FilterScreenState extends State<FilterScreen> {
                       ),
                       const SizedBox(height: 10),
                       ConstrainedBox(
-                        constraints: const BoxConstraints(maxHeight: 360),
+                        constraints: const BoxConstraints(maxHeight: 200),
                         child:
                             filtered.isEmpty
                                 ? const Center(child: Text('ไม่พบรายการ'))
                                 : ListView.separated(
                                   itemCount: filtered.length,
                                   separatorBuilder:
-                                      (_, __) => const Divider(height: 1),
+                                      (_, _) => const Divider(height: 1),
                                   itemBuilder: (_, i) {
                                     final name = filtered[i];
                                     return ListTile(
                                       contentPadding:
                                           const EdgeInsets.symmetric(
                                             horizontal: 8,
-                                            vertical: 8,
+                                            vertical: 1,
                                           ),
                                       title: Text(
                                         name,
                                         style: const TextStyle(
                                           fontSize: 18,
-                                          height: 1.3,
                                         ),
                                       ),
                                       onTap: () => Navigator.pop(ctx, name),
@@ -688,13 +664,6 @@ class _FilterScreenState extends State<FilterScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFFEAF7FB),
         borderRadius: BorderRadius.circular(_cardRadius),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.12),
-            blurRadius: 10,
-            offset: const Offset(0, 6),
-          ),
-        ],
         border: Border.all(color: kBorder, width: 1),
       ),
       child: Column(

@@ -264,7 +264,7 @@ class _AddDataScreenState extends State<AddDataScreen> {
                           prefixIcon: const Icon(Icons.search, color: _primary),
                           isDense: true,
                           focusedBorder: OutlineInputBorder(
-                            borderSide: const BorderSide(color: _primary, width: 2),
+                            borderSide: const BorderSide(color: Color.fromARGB(255, 14, 71, 161), width: 2),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           enabledBorder: OutlineInputBorder(
@@ -276,13 +276,13 @@ class _AddDataScreenState extends State<AddDataScreen> {
                       ),
                       const SizedBox(height: 10),
                       ConstrainedBox(
-                        constraints: const BoxConstraints(maxHeight: 320),
+                        constraints: const BoxConstraints(maxHeight: 200),
                         child: filtered.isEmpty
                             ? const Center(child: Text('ไม่พบรายการ'))
                             : ListView.separated(
                                 shrinkWrap: true,
                                 itemCount: filtered.length,
-                                separatorBuilder: (_, __) => const Divider(height: 1),
+                                separatorBuilder: (_, _) => const Divider(height: 1),
                                 itemBuilder: (context, index) {
                                   final name = filtered[index];
                                   return ListTile(
@@ -630,9 +630,7 @@ class _AddDataScreenState extends State<AddDataScreen> {
                         color: const Color(0xFFEAF7FB),
                         borderRadius: BorderRadius.circular(25),
                         border: Border.all(color: _primary, width: 1.5),
-                        boxShadow: [
-                          BoxShadow(color: Colors.black.withOpacity(0.15), spreadRadius: 1, blurRadius: 8, offset: const Offset(0, 4)),
-                        ],
+                        
                       ),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
@@ -843,7 +841,7 @@ class _AddDataScreenState extends State<AddDataScreen> {
                             decoration: InputDecoration(
                               label: _buildLabel('คำอธิบาย เช่น รายละเอียดโรค อาการที่เป็น'),
                               border: const OutlineInputBorder(),
-                              enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: _primary.withOpacity(0.5))),
+                              enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: _primary)),
                               focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: _primary, width: 2)),
                             ),
                           ),

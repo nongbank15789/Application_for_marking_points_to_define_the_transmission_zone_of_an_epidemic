@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
-import 'package:project/screens/auth_screen.dart';
-import 'package:project/screens/config.dart';
+import 'auth_screen.dart';
+import 'config.dart';
 import 'drawer_list_item.dart';
 import 'profile_screen.dart';
 import 'filter_screen.dart';
@@ -106,9 +106,12 @@ class _MapScreenState extends State<MapScreen> {
   double _sheetInitialSize = 0.30;
   double _lastMeasuredHeight = 0;
 
+  late final FocusNode _searchFocus;
+
   @override
   void initState() {
     super.initState();
+    _searchFocus = FocusNode();
     _searchController = TextEditingController();
     _loadUserId();
     _getInitialLocation().then((_) {
@@ -458,6 +461,11 @@ class _MapScreenState extends State<MapScreen> {
       debugPrint("❌ Error parsing recovery date: $e");
       _countdownVN.value = 'ไม่ระบุวันที่หาย';
     }
+  }
+
+  void _unfocusSearch() {
+    _searchFocus.unfocus();
+    FocusManager.instance.primaryFocus?.unfocus();
   }
 
   void _hideBottomSheet() {
@@ -976,43 +984,48 @@ class _MapScreenState extends State<MapScreen> {
     return Scaffold(
       key: _scaffoldKey,
       drawer: _buildDrawer(context),
-      body: Stack(
-        children: [
-          GoogleMap(
-            myLocationEnabled: true,
-            myLocationButtonEnabled: false,
-            initialCameraPosition: CameraPosition(target: _center!, zoom: 15),
-            markers: _patientMarkers.union(_userMarkers),
-            circles: _dangerCircles,
-            compassEnabled: false,
-            onMapCreated: (controller) {
-              if (!_controller.isCompleted) {
-                _controller.complete(controller);
-              }
-            },
-            onLongPress: (pos) {
-              _addMarker(pos);
-            },
-            onTap: (_) {
-              if (_isBottomSheetVisible) _hideBottomSheet();
-            },
-            onCameraMove: (position) {
-              _currentCameraPosition = position;
-            },
-          ),
-          _buildTopBar(),
-          _buildPatientToggle(),
-          _buildFloatingButtons(),
-          if (_isBottomSheetVisible && !_confirmBarVisible)
-            Positioned.fill(
-              child: Align(
-                alignment: Alignment.bottomCenter,
-                child: _buildBottomSheet(),
-              ),
+      body: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: _unfocusSearch,
+        child: Stack(
+          children: [
+            GoogleMap(
+              myLocationEnabled: true,
+              myLocationButtonEnabled: false,
+              initialCameraPosition: CameraPosition(target: _center!, zoom: 15),
+              markers: _patientMarkers.union(_userMarkers),
+              circles: _dangerCircles,
+              compassEnabled: false,
+              onMapCreated: (controller) {
+                if (!_controller.isCompleted) {
+                  _controller.complete(controller);
+                }
+              },
+              onLongPress: (pos) {
+                _addMarker(pos);
+              },
+              onTap: (_) {
+                _unfocusSearch();
+                if (_isBottomSheetVisible) _hideBottomSheet();
+              },
+              onCameraMove: (position) {
+                _currentCameraPosition = position;
+              },
             ),
-          _buildBottomConfirmBar(),
-          if (widget.markMode) _buildBottomTipBanner(),
-        ],
+            _buildTopBar(),
+            _buildPatientToggle(),
+            _buildFloatingButtons(),
+            if (_isBottomSheetVisible && !_confirmBarVisible)
+              Positioned.fill(
+                child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: _buildBottomSheet(),
+                ),
+              ),
+            _buildBottomConfirmBar(),
+            if (widget.markMode) _buildBottomTipBanner(),
+          ],
+        ),
       ),
     );
   }
@@ -1137,6 +1150,7 @@ class _MapScreenState extends State<MapScreen> {
               icon: Icons.tune_outlined,
               title: 'ตัวกรองแผนที่',
               onTap: () async {
+                Navigator.pop(context);
                 final selectedFilters =
                     await Navigator.push<Map<String, dynamic>>(
                       context,
@@ -1255,12 +1269,15 @@ class _MapScreenState extends State<MapScreen> {
               children: [
                 IconButton(
                   icon: const Icon(Icons.menu, color: Colors.white, size: 26),
-                  onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+                  onPressed: () {
+                    _unfocusSearch();
+                    _scaffoldKey.currentState?.openDrawer();
+                  },
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Container(
-                    height: 36,
+                    height: 32,
                     decoration: BoxDecoration(
                       color: Colors.transparent,
                       borderRadius: BorderRadius.circular(20),
@@ -1273,7 +1290,9 @@ class _MapScreenState extends State<MapScreen> {
                             style: const TextStyle(color: Colors.white),
                             decoration: const InputDecoration(
                               hintText: 'ค้นหา...',
-                              hintStyle: TextStyle(color: Colors.white),
+                              hintStyle: TextStyle(
+                                color: Color.fromARGB(255, 211, 205, 205),
+                              ),
                               border: InputBorder.none,
                             ),
                             textInputAction: TextInputAction.search,
@@ -1289,7 +1308,7 @@ class _MapScreenState extends State<MapScreen> {
                 ),
                 const Spacer(),
                 IconButton(
-                  icon: const Icon(Icons.search, color: Colors.white, size: 26),
+                  icon: const Icon(Icons.search, color: Colors.white, size: 24),
                   onPressed: () {
                     final q = _searchController.text.trim();
                     if (q.isNotEmpty) _searchLocation(q);
@@ -1315,7 +1334,10 @@ class _MapScreenState extends State<MapScreen> {
             mini: true,
             heroTag: "myLocationBtn",
             backgroundColor: Colors.white,
-            onPressed: () => _determinePosition(forceCurrent: true),
+            onPressed: () {
+              _unfocusSearch();
+              _determinePosition(forceCurrent: true);
+            },
             child: const Icon(Icons.my_location),
           ),
           const SizedBox(height: 8),
@@ -1325,6 +1347,7 @@ class _MapScreenState extends State<MapScreen> {
             backgroundColor: Colors.white,
             onPressed: () async {
               if (_controller.isCompleted) {
+                _unfocusSearch();
                 final controller = await _controller.future;
                 controller.animateCamera(CameraUpdate.zoomIn());
               }
@@ -1337,6 +1360,7 @@ class _MapScreenState extends State<MapScreen> {
             heroTag: "compassBtn",
             backgroundColor: Colors.white,
             onPressed: () async {
+              _unfocusSearch();
               try {
                 if (_controller.isCompleted && _currentCameraPosition != null) {
                   final controller = await _controller.future;

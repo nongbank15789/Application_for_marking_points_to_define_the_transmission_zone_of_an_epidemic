@@ -1240,10 +1240,10 @@ class _EditDialogRecoveredState extends State<_EditDialogRecovered> {
     );
     try {
       final res = await http.post(
-        Uri.http(ApiConfig.host, _deleteEndpoint),
+        ApiConfig.u(_deleteEndpoint),
         headers: {'Content-Type': 'application/json; charset=utf-8'},
         body: utf8.encode(jsonEncode({'id': widget.record.id})),
-      );
+      ); 
       if (!mounted) return;
       Navigator.of(context).pop(); // close progress
 
