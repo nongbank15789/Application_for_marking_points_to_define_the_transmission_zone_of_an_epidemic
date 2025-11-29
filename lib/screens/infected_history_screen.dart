@@ -5,7 +5,7 @@ import 'package:intl/intl.dart';
 import 'map_screen.dart';
 import 'config.dart';
 
-final _getEndpoint = '/get_history.php';
+final _getEndpoint = '/get_history.php'; // ไฟล์นี้ดึงเฉพาะ patient (ติดเชื้อ)
 final _updateEndpoint = '/save_patient.php';
 final _deleteEndpoint = '/delete_history.php';
 
@@ -19,7 +19,9 @@ const _chipBg = Color(0xFFF3F6FF); // พื้นจาง ๆ
 class InfectedRecord {
   final int? id;
   final String? name,
+      surname, // <--- [เพิ่ม] นามสกุล
       disease,
+      sickDate,
       startDate,
       endDate,
       phoneNumber,
@@ -44,7 +46,9 @@ class InfectedRecord {
   InfectedRecord({
     this.id,
     this.name,
+    this.surname, // <--- [เพิ่ม]
     this.disease,
+    this.sickDate,
     this.startDate,
     this.endDate,
     this.phoneNumber,
@@ -66,28 +70,30 @@ class InfectedRecord {
   });
 
   factory InfectedRecord.fromJson(Map<String, dynamic> j) => InfectedRecord(
-    id: int.tryParse(j['pat_id'].toString()),
-    name: j['pat_name'],
-    disease: j['pat_epidemic'],
-    startDate: j['pat_infection_date'],
-    endDate: j['pat_recovery_date'],
-    phoneNumber: j['pat_phone'],
-    dangerLevel: j['pat_danger_level'],
-    description: j['pat_description'],
-    dangerRange: j['pat_danger_range'],
-    latitude: j['pat_latitude'],
-    longitude: j['pat_longitude'],
-    houseNo: j['pat_address_house_no'],
-    soi: j['pat_address_soi'],
-    road: j['pat_address_road'],
-    village: j['pat_address_village'],
-    moo: j['pat_address_moo'],
-    subdistrict: j['pat_address_subdistrict'],
-    district: j['pat_address_district'],
-    province: j['pat_address_province'],
-    postcode: j['pat_address_postcode'],
-    landmark: j['pat_address_landmark'],
-  );
+        id: int.tryParse(j['pat_id'].toString()),
+        name: j['pat_name'],
+        surname: j['pat_surname'], // <--- [รับค่าจาก API]
+        disease: j['pat_epidemic'],
+        sickDate: j['pat_sick_date'],
+        startDate: j['pat_infection_date'],
+        endDate: j['pat_recovery_date'],
+        phoneNumber: j['pat_phone'],
+        dangerLevel: j['pat_danger_level'],
+        description: j['pat_description'],
+        dangerRange: j['pat_danger_range'],
+        latitude: j['pat_latitude'],
+        longitude: j['pat_longitude'],
+        houseNo: j['pat_address_house_no'],
+        soi: j['pat_address_soi'],
+        road: j['pat_address_road'],
+        village: j['pat_address_village'],
+        moo: j['pat_address_moo'],
+        subdistrict: j['pat_address_subdistrict'],
+        district: j['pat_address_district'],
+        province: j['pat_address_province'],
+        postcode: j['pat_address_postcode'],
+        landmark: j['pat_address_landmark'],
+      );
 
   String fullAddress() {
     final p = <String>[
@@ -132,10 +138,9 @@ class _InfectedHistoryScreenState extends State<InfectedHistoryScreen> {
     final s = recoveryDate.trim();
     if (s.isEmpty || s == '0000-00-00') return false;
     try {
-      final dt =
-          s.length == 10
-              ? DateFormat('yyyy-MM-dd').parseStrict(s)
-              : DateTime.parse(s);
+      final dt = s.length == 10
+          ? DateFormat('yyyy-MM-dd').parseStrict(s)
+          : DateTime.parse(s);
       final endOfDay = DateTime(dt.year, dt.month, dt.day, 23, 59, 59);
       return DateTime.now().isAfter(endOfDay) ||
           DateTime.now().isAtSameMomentAs(endOfDay);
@@ -156,7 +161,7 @@ class _InfectedHistoryScreenState extends State<InfectedHistoryScreen> {
     return data
         .cast<Map<String, dynamic>>()
         .map((e) => InfectedRecord.fromJson(e))
-        .where((r) => !_isRecovered(r.endDate))
+        .where((r) => !_isRecovered(r.endDate)) // กรองเฉพาะที่ยังไม่หาย
         .toList();
   }
 
@@ -226,10 +231,12 @@ class _InfectedHistoryScreenState extends State<InfectedHistoryScreen> {
                             padding: const EdgeInsets.only(bottom: 16),
                             child: _HistoryCard(
                               size: size,
-                              title: r.name ?? '-',
+                              // ✅ ส่งชื่อ + นามสกุล
+                              title: '${r.name ?? ''} ${r.surname ?? ''}'.trim(),
                               disease: r.disease ?? '-',
+                              sickDate: r.sickDate ?? '-',
                               startDate: r.startDate ?? '-',
-                              endDate: r.endDate ?? '-', // ให้ badge คำนวณ
+                              endDate: r.endDate ?? '-',
                               phone: r.phoneNumber ?? '-',
                               dangerLevel: r.dangerLevel,
                               address: r.fullAddress(),
@@ -308,9 +315,11 @@ class _SearchBar extends StatelessWidget {
 int _daysUntil(String? endDate) {
   if (endDate == null || endDate.trim().isEmpty) return 0;
   final s = endDate.trim();
+  // ถ้ามีแต่ yyyy-MM-dd ให้เติมเวลา เพื่อให้ parse ได้
   final dt = DateTime.tryParse(s.length == 10 ? '$s 00:00:00' : s);
   if (dt == null) return 0;
   final now = DateTime.now();
+  // คิดความต่างเป็นวัน
   return dt.difference(DateTime(now.year, now.month, now.day)).inDays;
 }
 
@@ -325,7 +334,7 @@ int _daysUntil(String? endDate) {
 
 class _HistoryCard extends StatelessWidget {
   final Size size;
-  final String title, disease, startDate, endDate, phone;
+  final String title, disease, sickDate, startDate, endDate, phone;
   final String? dangerLevel;
   final String address;
   final String? lat, lng;
@@ -335,8 +344,9 @@ class _HistoryCard extends StatelessWidget {
     required this.size,
     required this.title,
     required this.disease,
+    required this.sickDate,
     required this.startDate,
-    required this.endDate, // NEW: ใช้คำนวณ badge
+    required this.endDate,
     required this.phone,
     required this.dangerLevel,
     required this.address,
@@ -401,25 +411,42 @@ class _HistoryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // header
+          // Header: ชื่อ + ปุ่ม Map/Edit
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start, // ✅ จัดให้ชิดบน เพื่อไม่ให้ปุ่มเลื่อนตามความสูง text
             children: [
-              Text(
-                'ชื่อผู้ป่วย: $title',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: _primary,
+              // ส่วนแสดงชื่อ (ใช้ Expanded เพื่อให้กินพื้นที่ที่เหลือและตัดคำได้)
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // แสดงชื่อ
+                    Text(
+                      'ชื่อ: ${title.split(' ').first}', // ดึงคำแรก (ชื่อ)
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF0D47A1),
+                      ),
+                    ),
+                    const SizedBox(height: 4), // เว้นระยะห่างนิดหน่อย
+                    // แสดงนามสกุล
+                    Text(
+                      'นามสกุล: ${title.split(' ').length > 1 ? title.split(' ').sublist(1).join(' ') : '-'}', // ดึงคำที่เหลือ (นามสกุล)
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF0D47A1),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   IconButton(
-                    icon: const Icon(
-                      Icons.location_on_outlined,
-                      color: _primary,
-                    ),
+                    icon: const Icon(Icons.location_on_outlined, color: _primary),
                     onPressed: () {
                       final la = double.tryParse(lat ?? '');
                       final lo = double.tryParse(lng ?? '');
@@ -427,8 +454,8 @@ class _HistoryCard extends StatelessWidget {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder:
-                                (_) => MapScreen(latitude: la, longitude: lo),
+                            builder: (_) =>
+                                MapScreen(latitude: la, longitude: lo),
                           ),
                         );
                       } else {
@@ -439,10 +466,7 @@ class _HistoryCard extends StatelessWidget {
                     },
                   ),
                   IconButton(
-                    icon: const Icon(
-                      Icons.edit_outlined,
-                      color: _primary,
-                    ),
+                    icon: const Icon(Icons.edit_outlined, color: _primary),
                     onPressed: onEdit,
                   ),
                 ],
@@ -452,7 +476,7 @@ class _HistoryCard extends StatelessWidget {
           const Divider(color: _primary, thickness: 1, height: 10),
           const SizedBox(height: 8),
 
-          // โรคที่ติด + badge "อีกกี่วันหาย"
+          // โรคที่ติด + badge สถานะ
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -461,22 +485,30 @@ class _HistoryCard extends StatelessWidget {
               _badge(info.text, info.color),
             ],
           ),
+          const SizedBox(height: 10),
 
-          const SizedBox(height: 8),
+          // วันเริ่มป่วย (ซ้าย) | วันรับเชื้อ (ขวา)
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(child: _row('ติดวันที่', startDate)),
+              Expanded(child: _row('วันเริ่มป่วย', sickDate)),
               const SizedBox(width: 20),
-              Expanded(child: _row('หายวันที่', endDate)),
+              Expanded(child: _row('วันรับเชื้อ', startDate)),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
+
+          // วันสิ้นสุดการควบคุมโรค (ชิดซ้ายเดี่ยวๆ)
+          _row('วันสิ้นสุดการควบคุมโรค', endDate),
+
+          const SizedBox(height: 10),
           _row('เบอร์', phone),
           const SizedBox(height: 8),
+
           if ((dangerLevel ?? '').isNotEmpty)
             _row('ระดับความอันตราย', dangerLevel!),
           const SizedBox(height: 8),
+
           _row('ที่อยู่', address.isEmpty ? '-' : address),
         ],
       ),
@@ -484,20 +516,21 @@ class _HistoryCard extends StatelessWidget {
   }
 
   Widget _row(String label, String value) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(
-        label,
-        style: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.bold,
-          color: Color(0xFF084cc5),
-        ),
-      ),
-      const SizedBox(height: 4),
-      Text(value, style: const TextStyle(fontSize: 16, color: Colors.black87)),
-    ],
-  );
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF084cc5),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(value,
+              style: const TextStyle(fontSize: 16, color: Colors.black87)),
+        ],
+      );
 }
 
 // ==================== EDIT DIALOG ====================
@@ -519,7 +552,7 @@ class _EditDialogInfectedState extends State<_EditDialogInfected> {
   final DateFormat _fmtDisplay = DateFormat('dd/MM/yyyy');
   final DateFormat _fmtApi = DateFormat('yyyy-MM-dd');
 
-  final List<String> _dangerLevelOptions = ['น้อย', 'ปานกลาง', 'มาก'];
+  final List<String> _dangerLevelOptions = ['ระยะแรก', 'ระยะที่สอง', 'เสียชีวิต'];
   late final TextEditingController _dangerLevelController;
   String? _selectedDangerLevel;
 
@@ -527,7 +560,9 @@ class _EditDialogInfectedState extends State<_EditDialogInfected> {
   bool _loadingDiseases = true;
 
   late final TextEditingController _name,
+      _surname, // <--- [เพิ่ม]
       _disease,
+      _sick,
       _start,
       _end,
       _phone,
@@ -549,18 +584,20 @@ class _EditDialogInfectedState extends State<_EditDialogInfected> {
     super.initState();
     final r = widget.record;
     _name = TextEditingController(text: r.name);
+    _surname = TextEditingController(text: r.surname); // <--- [เพิ่ม]
     _disease = TextEditingController(text: r.disease);
+    _sick = TextEditingController(text: _fromApiToDisplay(r.sickDate));
     _start = TextEditingController(text: _fromApiToDisplay(r.startDate));
     _end = TextEditingController(text: _fromApiToDisplay(r.endDate));
     _phone = TextEditingController(text: r.phoneNumber);
     _desc = TextEditingController(text: r.description);
     _range = TextEditingController(text: r.dangerRange);
 
-    _selectedDangerLevel =
-        (r.dangerLevel?.isNotEmpty ?? false)
-            ? r.dangerLevel
-            : _dangerLevelOptions[0];
-    _dangerLevelController = TextEditingController(text: _selectedDangerLevel);
+    _selectedDangerLevel = (r.dangerLevel?.isNotEmpty ?? false)
+        ? r.dangerLevel
+        : _dangerLevelOptions[0];
+    _dangerLevelController =
+        TextEditingController(text: _selectedDangerLevel);
 
     _houseNo = TextEditingController(text: r.houseNo ?? '');
     _moo = TextEditingController(text: r.moo ?? '');
@@ -579,7 +616,9 @@ class _EditDialogInfectedState extends State<_EditDialogInfected> {
   @override
   void dispose() {
     _name.dispose();
+    _surname.dispose(); // <--- [เพิ่ม]
     _disease.dispose();
+    _sick.dispose();
     _start.dispose();
     _end.dispose();
     _phone.dispose();
@@ -644,21 +683,20 @@ class _EditDialogInfectedState extends State<_EditDialogInfected> {
       initialDate: init,
       firstDate: DateTime(2000),
       lastDate: DateTime(2101),
-      builder:
-          (context, child) => Theme(
-            data: Theme.of(context).copyWith(
-              colorScheme: const ColorScheme.light(primary: _primary),
-              textButtonTheme: TextButtonThemeData(
-                style: TextButton.styleFrom(foregroundColor: _primary),
-              ),
-              dialogTheme: DialogThemeData(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-            ),
-            child: child!,
+      builder: (context, child) => Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme: const ColorScheme.light(primary: _primary),
+          textButtonTheme: TextButtonThemeData(
+            style: TextButton.styleFrom(foregroundColor: _primary),
           ),
+          dialogTheme: DialogThemeData(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+          ),
+        ),
+        child: child!,
+      ),
     );
     if (picked != null) {
       c.text = _fmtDisplay.format(picked);
@@ -677,17 +715,16 @@ class _EditDialogInfectedState extends State<_EditDialogInfected> {
         final decoded = jsonDecode(res.body);
         if (decoded is List) {
           for (final item in decoded) {
-            final v =
-                item is String
-                    ? item.trim()
-                    : (item is Map
-                        ? (item['name'] ??
-                                item['disease'] ??
-                                item['epidemic'] ??
-                                item['title'])
-                            ?.toString()
-                            .trim()
-                        : null);
+            final v = item is String
+                ? item.trim()
+                : (item is Map
+                    ? (item['name'] ??
+                            item['disease'] ??
+                            item['epidemic'] ??
+                            item['title'])
+                        ?.toString()
+                        .trim()
+                    : null);
             if (v != null && v.isNotEmpty) setNames.add(v);
           }
         }
@@ -732,10 +769,11 @@ class _EditDialogInfectedState extends State<_EditDialogInfected> {
 
   List<String> _collectErrors() {
     final errs = <String>[];
-    if (_name.text.trim().isEmpty) errs.add('ชื่อผู้ป่วย');
+    if (_name.text.trim().isEmpty) errs.add('ชื่อ');
+    //if (_surname.text.trim().isEmpty) errs.add('นามสกุล'); // <--- [เพิ่ม]
     if (_disease.text.trim().isEmpty) errs.add('โรคที่ติด');
-    if (_start.text.trim().isEmpty) errs.add('วันที่ติดเชื้อ');
-    if (_end.text.trim().isEmpty) errs.add('วันที่หาย');
+    if (_start.text.trim().isEmpty) errs.add('วันรับเชื้อ');
+    if (_end.text.trim().isEmpty) errs.add('วันสิ้นสุดการควบคุมโรค');
     if (_phone.text.trim().isEmpty) errs.add('เบอร์โทรศัพท์');
     if (_houseNo.text.trim().isEmpty) errs.add('บ้านเลขที่/ชุมชน');
     if (_moo.text.trim().isEmpty) errs.add('หมู่');
@@ -759,45 +797,43 @@ class _EditDialogInfectedState extends State<_EditDialogInfected> {
   Future<bool?> _confirm(String msg) async {
     return showDialog<bool>(
       context: context,
-      builder:
-          (ctx) => AlertDialog(
-            title: const Text('ยืนยัน'),
-            content: Text(msg),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('ยกเลิก'),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF0E47A1)),
-                onPressed: () => Navigator.pop(ctx, true),
-                child: const Text(
-                  'ตกลง',
-                  style: TextStyle(color: Colors.white),
-                ),
-              ),
-            ],
+      builder: (ctx) => AlertDialog(
+        title: const Text('ยืนยัน'),
+        content: Text(msg),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('ยกเลิก'),
           ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0E47A1)),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text(
+              'ตกลง',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   void _alert(String m) {
     showDialog(
       context: context,
-      builder:
-          (ctx) => AlertDialog(
-            title: const Text(
-              'คำเตือน',
-              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-            ),
-            content: Text(m),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('ตกลง'),
-              ),
-            ],
+      builder: (ctx) => AlertDialog(
+        title: const Text(
+          'คำเตือน',
+          style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+        ),
+        content: Text(m),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('ตกลง'),
           ),
+        ],
+      ),
     );
   }
 
@@ -921,21 +957,20 @@ class _EditDialogInfectedState extends State<_EditDialogInfected> {
   }
 
   Widget _label(String text, {bool required = false}) => RichText(
-    text: TextSpan(
-      text: text,
-      style: const TextStyle(
-        color: _primary,
-        fontSize: 16,
-        fontWeight: FontWeight.bold,
-      ),
-      children:
-          required
+        text: TextSpan(
+          text: text,
+          style: const TextStyle(
+            color: _primary,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+          children: required
               ? const [
-                TextSpan(text: ' *', style: TextStyle(color: Colors.red)),
-              ]
+                  TextSpan(text: ' *', style: TextStyle(color: Colors.red)),
+                ]
               : const [],
-    ),
-  );
+        ),
+      );
 
   Widget _tf({
     required String label,
@@ -966,10 +1001,9 @@ class _EditDialogInfectedState extends State<_EditDialogInfected> {
             keyboardType: keyboardType,
             minLines: minLines,
             maxLines: maxLines,
-            autovalidateMode:
-                _submitted
-                    ? AutovalidateMode.always
-                    : AutovalidateMode.disabled,
+            autovalidateMode: _submitted
+                ? AutovalidateMode.always
+                : AutovalidateMode.disabled,
             decoration: InputDecoration(
               hintText: label,
               contentPadding: const EdgeInsets.symmetric(
@@ -986,24 +1020,23 @@ class _EditDialogInfectedState extends State<_EditDialogInfected> {
                 borderSide: BorderSide(color: _primary, width: 2),
                 borderRadius: BorderRadius.all(Radius.circular(12)),
               ),
-              suffixIcon:
-                  suffixIcon != null
-                      ? IconButton(
-                        icon: Icon(suffixIcon, color: _primary),
-                        onPressed: onSuffix,
-                      )
-                      : (suffixText != null
-                          ? Padding(
-                            padding: const EdgeInsets.only(right: 12, top: 14),
-                            child: Text(
-                              suffixText,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                color: Colors.black87,
-                              ),
+              suffixIcon: suffixIcon != null
+                  ? IconButton(
+                      icon: Icon(suffixIcon, color: _primary),
+                      onPressed: onSuffix,
+                    )
+                  : (suffixText != null
+                      ? Padding(
+                          padding: const EdgeInsets.only(right: 12, top: 14),
+                          child: Text(
+                            suffixText,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              color: Colors.black87,
                             ),
-                          )
-                          : null),
+                          ),
+                        )
+                      : null),
             ),
           ),
         ],
@@ -1015,15 +1048,16 @@ class _EditDialogInfectedState extends State<_EditDialogInfected> {
     String label,
     TextEditingController c, {
     bool required = false,
-  }) => _tf(
-    label: label,
-    c: c,
-    readOnly: true,
-    required: required,
-    suffixIcon: Icons.calendar_month,
-    onSuffix: () => _pick(c),
-    validator: (v) => _required(v, label),
-  );
+  }) =>
+      _tf(
+        label: label,
+        c: c,
+        readOnly: true,
+        required: required,
+        suffixIcon: Icons.calendar_month,
+        onSuffix: () => _pick(c),
+        validator: (v) => _required(v, label),
+      );
 
   Widget _diseaseField() {
     return Padding(
@@ -1038,42 +1072,40 @@ class _EditDialogInfectedState extends State<_EditDialogInfected> {
           TextFormField(
             controller: _disease,
             validator: (v) => _required(v, 'โรคที่ติด'),
-            autovalidateMode:
-                _submitted
-                    ? AutovalidateMode.always
-                    : AutovalidateMode.disabled,
+            autovalidateMode: _submitted
+                ? AutovalidateMode.always
+                : AutovalidateMode.disabled,
             readOnly: false,
             decoration: InputDecoration(
               hintText: 'โรคที่ติด',
               filled: true,
               fillColor: Colors.grey[100],
-              suffixIcon:
-                  _loadingDiseases
-                      ? const Padding(
-                        padding: EdgeInsets.all(12.0),
-                        child: SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                      )
-                      : IconButton(
-                        icon: const Icon(
-                          Icons.format_list_bulleted,
-                          color: _primary,
-                        ),
-                        onPressed: () async {
-                          if (_diseaseOptions.isEmpty) {
-                            _alert('ยังไม่มีรายการโรคจากฐานข้อมูล');
-                            return;
-                          }
-                          final selected = await _showDiseasePickerWithSearch();
-                          if (selected != null) {
-                            setState(() => _disease.text = selected);
-                            if (_submitted) _formKey.currentState?.validate();
-                          }
-                        },
+              suffixIcon: _loadingDiseases
+                  ? const Padding(
+                      padding: EdgeInsets.all(12.0),
+                      child: SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
                       ),
+                    )
+                  : IconButton(
+                      icon: const Icon(
+                        Icons.format_list_bulleted,
+                        color: _primary,
+                      ),
+                      onPressed: () async {
+                        if (_diseaseOptions.isEmpty) {
+                          _alert('ยังไม่มีรายการโรคจากฐานข้อมูล');
+                          return;
+                        }
+                        final selected = await _showDiseasePickerWithSearch();
+                        if (selected != null) {
+                          setState(() => _disease.text = selected);
+                          if (_submitted) _formKey.currentState?.validate();
+                        }
+                      },
+                    ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,
@@ -1089,39 +1121,36 @@ class _EditDialogInfectedState extends State<_EditDialogInfected> {
     );
   }
 
-  Widget _dangerField() {
-    return _tf(
-      label: 'ระดับความอันตราย',
-      c: _dangerLevelController,
-      readOnly: true,
-      suffixIcon: Icons.format_list_bulleted,
-      onSuffix: () async {
-        final selected = await showDialog<String>(
-          context: context,
-          builder: (BuildContext dialogContext) {
-            return SimpleDialog(
-              title: const Text('เลือกระดับความอันตราย'),
-              children:
-                  _dangerLevelOptions
-                      .map(
-                        (e) => SimpleDialogOption(
-                          onPressed: () => Navigator.pop(dialogContext, e),
-                          child: Text(e),
-                        ),
-                      )
-                      .toList(),
-            );
-          },
-        );
-        if (selected != null) {
-          setState(() {
-            _selectedDangerLevel = selected;
-            _dangerLevelController.text = selected;
-          });
-        }
-      },
-    );
-  }
+  Widget _dangerField() => _tf(
+        label: 'ระดับความอันตราย',
+        c: _dangerLevelController,
+        readOnly: true,
+        suffixIcon: Icons.format_list_bulleted,
+        onSuffix: () async {
+          final selected = await showDialog<String>(
+            context: context,
+            builder: (BuildContext dialogContext) {
+              return SimpleDialog(
+                title: const Text('เลือกระดับความอันตราย'),
+                children: _dangerLevelOptions
+                    .map(
+                      (e) => SimpleDialogOption(
+                        onPressed: () => Navigator.pop(dialogContext, e),
+                        child: Text(e),
+                      ),
+                    )
+                    .toList(),
+              );
+            },
+          );
+          if (selected != null) {
+            setState(() {
+              _selectedDangerLevel = selected;
+              _dangerLevelController.text = selected;
+            });
+          }
+        },
+      );
 
   Future<String?> _showDiseasePickerWithSearch() async {
     List<String> filtered = List.of(_diseaseOptions);
@@ -1129,88 +1158,83 @@ class _EditDialogInfectedState extends State<_EditDialogInfected> {
       context: context,
       builder: (BuildContext dialogContext) {
         return StatefulBuilder(
-          builder:
-              (ctx, setStateSB) => AlertDialog(
-                title: const Text('เลือก ชื่อโรค'),
-                content: SizedBox(
-                  width: double.maxFinite,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      TextField(
-                        autofocus: true,
-                        decoration: InputDecoration(
-                          hintText: 'พิมพ์เพื่อค้นหา...',
-                          prefixIcon: const Icon(Icons.search, color: _primary),
-                          isDense: true,
-                          focusedBorder: OutlineInputBorder(
-                            borderSide: const BorderSide(
-                              color: _primary,
-                              width: 2,
-                            ),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderSide: BorderSide(
-                              color: Colors.blueGrey.shade200,
-                            ),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
+          builder: (ctx, setStateSB) => AlertDialog(
+            title: const Text('เลือก ชื่อโรค'),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    autofocus: true,
+                    decoration: InputDecoration(
+                      hintText: 'พิมพ์เพื่อค้นหา...',
+                      prefixIcon: const Icon(Icons.search, color: _primary),
+                      isDense: true,
+                      focusedBorder: OutlineInputBorder(
+                        borderSide: const BorderSide(
+                          color: _primary,
+                          width: 2,
                         ),
-                        onChanged: (q) {
-                          final lower = q.toLowerCase();
-                          setStateSB(() {
-                            filtered =
-                                _diseaseOptions
-                                    .where(
-                                      (e) => e.toLowerCase().contains(lower),
-                                    )
-                                    .toList();
-                          });
-                        },
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                      const SizedBox(height: 10),
-                      ConstrainedBox(
-                        constraints: const BoxConstraints(maxHeight: 320),
-                        child:
-                            filtered.isEmpty
-                                ? const Center(child: Text('ไม่พบรายการ'))
-                                : ListView.separated(
-                                  shrinkWrap: true,
-                                  itemCount: filtered.length,
-                                  separatorBuilder:
-                                      (_, __) => const Divider(height: 1),
-                                  itemBuilder: (context, index) {
-                                    final name = filtered[index];
-                                    return ListTile(
-                                      contentPadding:
-                                          const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 1,
-                                          ),
-                                      title: Text(
-                                        name,
-                                        style: const TextStyle(fontSize: 18),
-                                      ),
-                                      onTap:
-                                          () => Navigator.pop(
-                                            dialogContext,
-                                            name,
-                                          ),
-                                    );
-                                  },
-                                ),
+                      enabledBorder: OutlineInputBorder(
+                        borderSide: BorderSide(
+                          color: Colors.blueGrey.shade200,
+                        ),
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                    ],
+                    ),
+                    onChanged: (q) {
+                      final lower = q.toLowerCase();
+                      setStateSB(() {
+                        filtered = _diseaseOptions
+                            .where(
+                              (e) => e.toLowerCase().contains(lower),
+                            )
+                            .toList();
+                      });
+                    },
                   ),
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(dialogContext),
-                    child: const Text('ยกเลิก'),
+                  const SizedBox(height: 10),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 320),
+                    child: filtered.isEmpty
+                        ? const Center(child: Text('ไม่พบรายการ'))
+                        : ListView.separated(
+                            shrinkWrap: true,
+                            itemCount: filtered.length,
+                            separatorBuilder: (_, __) =>
+                                const Divider(height: 1),
+                            itemBuilder: (context, index) {
+                              final name = filtered[index];
+                              return ListTile(
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 1,
+                                ),
+                                title: Text(
+                                  name,
+                                  style: const TextStyle(fontSize: 18),
+                                ),
+                                onTap: () => Navigator.pop(
+                                  dialogContext,
+                                  name,
+                                ),
+                              );
+                            },
+                          ),
                   ),
                 ],
               ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('ยกเลิก'),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -1236,7 +1260,9 @@ class _EditDialogInfectedState extends State<_EditDialogInfected> {
     final body = {
       'pat_id': widget.record.id,
       'pat_name': _name.text.trim(),
+      'pat_surname': _surname.text.trim(), // <--- [ส่งค่า]
       'pat_epidemic': _disease.text.trim(),
+      'pat_sick_date': _toApiDate(_sick.text),
       'pat_infection_date': _toApiDate(_start.text),
       'pat_recovery_date': _toApiDate(_end.text),
       'pat_phone': _phone.text.trim(),
@@ -1353,15 +1379,36 @@ class _EditDialogInfectedState extends State<_EditDialogInfected> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _tf(
-                  label: 'ชื่อผู้ป่วย',
-                  c: _name,
-                  validator: (v) => _required(v, 'ชื่อผู้ป่วย'),
-                  required: true,
+                // ✅ [ปรับ Layout ชื่อ-นามสกุล คู่กัน]
+                Row(
+                  children: [
+                    Expanded(
+                      child: _tf(
+                        label: 'ชื่อ',
+                        c: _name,
+                        validator: (v) => _required(v, 'ชื่อ'),
+                        required: true,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _tf(
+                        label: 'นามสกุล',
+                        c: _surname,
+                        //validator: (v) => _required(v, 'นามสกุล'),
+                       // required: true,
+                      ),
+                    ),
+                  ],
                 ),
+                
                 _diseaseField(),
-                _date('ติดวันที่', _start, required: true),
-                _date('หายวันที่', _end, required: true),
+                // <--- [เพิ่ม] วันเริ่มป่วย
+                _date('วันเริ่มป่วย', _sick),
+                // <--- [แก้ชื่อ]
+                _date('วันรับเชื้อ', _start, required: true),
+                // <--- [แก้ชื่อ]
+                _date('วันสิ้นสุดการควบคุมโรค', _end, required: true),
                 _tf(
                   label: 'เบอร์โทรศัพท์',
                   c: _phone,

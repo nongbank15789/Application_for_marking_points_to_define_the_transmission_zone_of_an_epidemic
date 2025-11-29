@@ -42,7 +42,7 @@ class _MapScreenState extends State<MapScreen> {
   int? userId;
   LatLng? _center;
   bool _isLoading = true;
-  bool _showInfected = true; // ค่าเริ่มต้นให้โชว์ผู้ป่วยติดเชื้อ
+  bool _showInfected = true; 
   bool _showRecovered = true;
 
   bool get _confirmBarVisible =>
@@ -55,19 +55,13 @@ class _MapScreenState extends State<MapScreen> {
   final Set<Marker> _userMarkers = {};
   final Set<Circle> _dangerCircles = {};
 
-  /// ====== ฟิลเตอร์แบบใหม่: รองรับช่วงวันที่จาก FilterScreen ======
   Map<String, dynamic> _activeFilters = {
-    // แสดงผลเฉย ๆ (อาจมีข้อความ “เลือกช่วงวันที่” หรือ “ทั้งหมด”)
     'infectedDate': 'ทั้งหมด',
     'recoveryDate': 'ทั้งหมด',
-
-    // ใช้งานจริงในการกรอง (yyyy-MM-dd หรือ null)
     'infectedStart': null,
     'infectedEnd': null,
     'recoveryStart': null,
     'recoveryEnd': null,
-
-    // ฟิลเตอร์อื่น ๆ
     'disease': 'ทั้งหมด',
     'danger': 'ทั้งหมด',
   };
@@ -99,7 +93,6 @@ class _MapScreenState extends State<MapScreen> {
   double _tipOpacity = 0.0;
   Timer? _tipTimer;
 
-  // bottom sheet dynamic size
   final GlobalKey _sheetContentKey = GlobalKey();
   double _sheetMinSize = 0.20;
   double _sheetMaxSize = 0.60;
@@ -165,8 +158,6 @@ class _MapScreenState extends State<MapScreen> {
             userData = data[0];
           });
         }
-      } else {
-        debugPrint("❌ Failed to fetch user data: ${response.statusCode}");
       }
     } catch (e) {
       debugPrint("❌ Error fetching user data: $e");
@@ -182,8 +173,6 @@ class _MapScreenState extends State<MapScreen> {
           _allPatients = data;
         });
         _applyFilters();
-      } else {
-        debugPrint("❌ Failed to fetch patient data: ${response.statusCode}");
       }
     } catch (e) {
       debugPrint("❌ Error fetching patient data: $e");
@@ -205,7 +194,6 @@ class _MapScreenState extends State<MapScreen> {
     return now.isAfter(dt) || now.isAtSameMomentAs(dt);
   }
 
-  /// ---------- Helper: parse yyyy-MM-dd (หรือแบบเต็ม) เป็น DateTime (ตัดเวลา) ----------
   DateTime? _parseYmdToDate(String? s) {
     if (s == null) return null;
     final t = s.trim();
@@ -215,7 +203,6 @@ class _MapScreenState extends State<MapScreen> {
     return DateTime(dt.year, dt.month, dt.day);
   }
 
-  /// ---------- กรองข้อมูลด้วยฟิลเตอร์ใหม่ ----------
   void _applyFilters() {
     final String diseaseFilter =
         (_activeFilters['disease'] ?? 'ทั้งหมด').toString();
@@ -241,9 +228,8 @@ class _MapScreenState extends State<MapScreen> {
             patient['pat_recovery_date']?.toString(),
           );
 
-          // 👇 ปรับเงื่อนไข: แสดงได้ทั้ง 2 ถ้าเลือก
-          if (!_showInfected && !isRecovered) return false; // ไม่โชว์ infected
-          if (!_showRecovered && isRecovered) return false; // ไม่โชว์ recovered
+          if (!_showInfected && !isRecovered) return false;
+          if (!_showRecovered && isRecovered) return false;
 
           final isDiseaseMatch =
               diseaseFilter == 'ทั้งหมด' ||
@@ -313,7 +299,12 @@ class _MapScreenState extends State<MapScreen> {
             double.tryParse(patient['pat_latitude']?.toString() ?? '') ?? 0.0;
         final double lng =
             double.tryParse(patient['pat_longitude']?.toString() ?? '') ?? 0.0;
+        
+        // ✅ [แก้ไข] ดึงชื่อและนามสกุล แล้วรวมกัน
         final String name = patient['pat_name']?.toString() ?? 'ไม่ระบุ';
+        final String surname = patient['pat_surname']?.toString() ?? '';
+        final String displayName = '$name $surname'.trim(); // รวมชื่อ+นามสกุล
+
         final String danger =
             patient['pat_danger_level']?.toString() ?? 'ไม่ระบุ';
         final String description =
@@ -323,6 +314,11 @@ class _MapScreenState extends State<MapScreen> {
             0;
         final String infectedDisease =
             patient['pat_epidemic']?.toString() ?? 'ไม่ระบุ';
+        
+        // ✅ [เพิ่ม] รับวันเริ่มป่วย
+        final String sickDate = 
+            patient['pat_sick_date']?.toString() ?? '-';
+
         final String recoveryDate =
             patient['pat_recovery_date']?.toString() ?? '';
 
@@ -331,50 +327,59 @@ class _MapScreenState extends State<MapScreen> {
         final double hueColor;
         Color circleColor;
         if (recovered) {
-          hueColor = BitmapDescriptor.hueGreen; // ผู้ที่หายแล้ว = เขียว
-          circleColor = Colors.transparent; // ไม่แสดงวงกลมอันตราย
+          hueColor = BitmapDescriptor.hueGreen;
+          circleColor = Colors.transparent;
         } else {
+          // สีตามระดับความอันตราย (ล่าสุด)
           switch (danger) {
-            case 'มาก':
+            case 'เสียชีวิต':
               hueColor = BitmapDescriptor.hueRed;
               circleColor = Colors.red;
               break;
-            case 'ปานกลาง':
+            case 'ระยะที่สอง':
               hueColor = BitmapDescriptor.hueOrange;
               circleColor = Colors.orange;
               break;
-            case 'น้อย':
+            case 'ระยะแรก':
               hueColor = BitmapDescriptor.hueYellow;
-              circleColor = const Color.fromARGB(255, 230, 251, 45);
+              circleColor = Colors.yellow;
               break;
             default:
               hueColor = BitmapDescriptor.hueBlue;
               circleColor = Colors.blue;
           }
         }
+        String shortName = displayName.length > 20
+            ? '${displayName.substring(0, 18)}...'
+            : displayName;
 
         final Marker newMarker = Marker(
           markerId: MarkerId('patient_$patId'),
           position: LatLng(lat, lng),
-          infoWindow:
-              _suppressInfoWindows
-                  ? const InfoWindow()
-                  : InfoWindow(
-                    title: 'ผู้ป่วย: $name',
-                    snippet:
-                        recovered
-                            ? 'สถานะ: หายแล้ว\nโรค: $infectedDisease'
-                            : 'ระดับความอันตราย: $danger\nโรค: $infectedDisease',
-                  ),
+          
+          // ✅ 2. ปรับปรุง InfoWindow ให้สั้นกระชับ
+          infoWindow: _suppressInfoWindows
+              ? const InfoWindow()
+              : InfoWindow(
+                  // เอาคำว่า "ผู้ป่วย:" ออก เพื่อให้มีพื้นที่โชว์ชื่อมากขึ้น
+                  title: shortName, 
+                  
+                  // ปรับรูปแบบข้อความสถานะให้สั้นลง (ตัดคำว่า สถานะ: ออก)
+                  snippet: recovered
+                      ? 'หายแล้ว ($infectedDisease)'
+                      : '$danger ($infectedDisease)',
+                ),
+                
           icon: BitmapDescriptor.defaultMarkerWithHue(hueColor),
           onTap: () {
             _updateBottomSheet(
               patId,
-              name,
+              displayName, // ✅ ส่งชื่อเต็มไปโชว์ใน BottomSheet (อ่านง่ายกว่า)
               danger,
               description,
               infectedDisease,
               recoveryDate,
+              sickDate,
             );
           },
         );
@@ -408,6 +413,7 @@ class _MapScreenState extends State<MapScreen> {
     String description,
     String disease,
     String recoveryDate,
+    String sickDate, // ✅ รับค่าวันเริ่มป่วย
   ) {
     if (_confirmBarVisible) return;
 
@@ -416,7 +422,14 @@ class _MapScreenState extends State<MapScreen> {
       _selectedPatientId = patId;
       _bottomSheetTitle = name;
       _bottomSheetDanger = danger;
-      _bottomSheetDescription = description;
+      
+      // ✅ [แสดงวันเริ่มป่วยในคำอธิบาย]
+      String descText = description;
+      if (sickDate != '-' && sickDate.isNotEmpty) {
+         descText = "เริ่มป่วย: $sickDate\n\n$description";
+      }
+      _bottomSheetDescription = descText;
+      
       _bottomSheetDisease = disease;
       _isBottomSheetVisible = true;
     });
@@ -898,7 +911,6 @@ class _MapScreenState extends State<MapScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // ปุ่ม ผู้ป่วยติดเชื้อ
           ElevatedButton.icon(
             onPressed: () {
               setState(() {
@@ -908,13 +920,13 @@ class _MapScreenState extends State<MapScreen> {
             },
             icon: Icon(
               Icons.sick_outlined,
-              size: 18, // ไอคอนเล็กลง
+              size: 18,
               color: _showInfected ? Colors.white : Colors.black87,
             ),
             label: Text(
               "ผู้ป่วยติดเชื้อ",
               style: TextStyle(
-                fontSize: 13, // ลด font ลง
+                fontSize: 13,
                 color: _showInfected ? Colors.white : Colors.black87,
                 fontWeight: FontWeight.w600,
               ),
@@ -924,7 +936,7 @@ class _MapScreenState extends State<MapScreen> {
                   _showInfected ? const Color(0xFF0E47A1) : Colors.white,
               elevation: 2,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              minimumSize: const Size(0, 36), // ความสูงลดลง
+              minimumSize: const Size(0, 36),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
                 side: BorderSide(
@@ -935,7 +947,6 @@ class _MapScreenState extends State<MapScreen> {
             ),
           ),
           const SizedBox(width: 8),
-          // ปุ่ม ผู้ป่วยหายแล้ว
           ElevatedButton.icon(
             onPressed: () {
               setState(() {
@@ -1043,7 +1054,6 @@ class _MapScreenState extends State<MapScreen> {
         decoration: const BoxDecoration(color: Colors.white),
         child: Column(
           children: [
-            // Profile header
             LayoutBuilder(
               builder: (BuildContext context, BoxConstraints constraints) {
                 return Container(
@@ -1161,7 +1171,6 @@ class _MapScreenState extends State<MapScreen> {
                 if (selectedFilters != null) {
                   setState(() {
                     _activeFilters = {
-                      // เก็บค่าที่ FilterScreen ส่งมา (รองรับคีย์ใหม่ทั้งหมด)
                       ..._activeFilters,
                       ...selectedFilters,
                     };
@@ -1417,7 +1426,7 @@ class _MapScreenState extends State<MapScreen> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          _bottomSheetTitle,
+                          _bottomSheetTitle, // ✅ แสดงชื่อเต็ม
                           style: const TextStyle(fontSize: 18),
                           overflow: TextOverflow.ellipsis,
                           maxLines: 1,

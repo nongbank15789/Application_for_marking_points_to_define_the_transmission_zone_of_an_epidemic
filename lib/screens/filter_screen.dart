@@ -658,7 +658,7 @@ class _FilterScreenState extends State<FilterScreen> {
 
   // การ์ด "ความอันตราย"
   Widget _verticalOptionsCardDanger() {
-    const options = ['น้อย', 'ปานกลาง', 'มาก', 'ทั้งหมด'];
+    const options = ['ระยะแรก', 'ระยะที่สอง', 'เสียชีวิต', 'ทั้งหมด'];
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
       decoration: BoxDecoration(
